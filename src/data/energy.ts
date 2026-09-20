@@ -20,10 +20,10 @@ export const alerts:Alert[]=[
 {id:"ALT-1035",roomId:"classroom-102",severity:"Medium",detectedAt:"Yesterday, 16:45",status:"Resolved"},
 {id:"ALT-1028",roomId:"library-hall",severity:"Low",detectedAt:"18 Sep, 20:10",status:"Dismissed"},
 ];
-export const hourly=Array.from({length:24},(_,i)=>{const baseline=i<7||i>20?1800:i<10?6200:i<17?7900:5200;const anomaly=i>=10&&i<=14?[0,1600,2200,1800,900][i-10]:0;return {time:`${String(i).padStart(2,"0")}:00`,actual:baseline+Math.round(Math.sin(i)*380)+anomaly,baseline,anomaly:anomaly?baseline+anomaly:null};});
-export const daily=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day,i)=>({day,actual:[94,101,108,116,99,61,55][i],baseline:[91,94,96,98,92,58,52][i]}));
+export const hourly=Array.from({length:24},(_,i)=>{const baseline=i<7||i>20?1800:i<10?6200:i<17?7900:5200;const anomaly=i>=10&&i<=14?([0,1600,2200,1800,900][i-10] ?? 0):0;return {time:`${String(i).padStart(2,"0")}:00`,actual:baseline+Math.round(Math.sin(i)*380)+anomaly,baseline,anomaly:anomaly?baseline+anomaly:null};});
+export const daily=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day,i)=>({day,actual:([94,101,108,116,99,61,55][i] ?? 0),baseline:([91,94,96,98,92,58,52][i] ?? 0)}));
 export const buildingData=[{name:"Computer Science",consumption:38,waste:4.8,cost:49},{name:"Mechanical",consumption:31,waste:8.99,cost:93},{name:"Hostel A",consumption:44,waste:4.16,cost:43},{name:"Library",consumption:14,waste:0,cost:0},{name:"Classrooms",consumption:23,waste:.08,cost:1}];
-export const monthly=["Oct","Nov","Dec","Jan","Feb","Mar"].map((month,i)=>({month,waste:[192,177,168,151,139,122][i],savings:[1980,2150,2390,2860,3740,5540][i]}));
+export const monthly=["Oct","Nov","Dec","Jan","Feb","Mar"].map((month,i)=>({month,waste:([192,177,168,151,139,122][i] ?? 0),savings:([1980,2150,2390,2860,3740,5540][i] ?? 0)}));
 export const detectionFloor=[{name:"Classroom",baseline:204,detectable:5,excess:48},{name:"Mechanical Lab 1",baseline:15,detectable:64,excess:49},{name:"CS Lab 1",baseline:20,detectable:69,excess:49},{name:"Library Hall",baseline:61,detectable:102,excess:41},{name:"Hostel Block A",baseline:478,detectable:627,excess:149}];
 export const buildings=["All buildings","Computer Science Block","Mechanical Block","Library","Hostel Block A","Classroom Block"];
 export const roomById=(id:string)=>rooms.find(r=>r.id===id);
