@@ -1,17 +1,1241 @@
-import {useEffect,useState} from "react";import {Link} from "@tanstack/react-router";import {Activity,AlertTriangle,ArrowRight,BarChart3,BatteryCharging,BookOpen,Building2,CalendarDays,Check,CheckCircle2,Clock3,Factory,Gauge,IndianRupee,Info,Lightbulb,LineChart as LineIcon,Search,ShieldCheck,Siren,Sparkles,TrendingDown,WalletCards,Zap} from "lucide-react";import {toast} from "sonner";import {Button} from "@/components/ui/button";import {Input} from "@/components/ui/input";import {Switch} from "@/components/ui/switch";import {Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle} from "@/components/ui/dialog";import {ConsumptionChart,SimpleBar,TrendChart} from "./Charts";import {DetailLink,EmptyState,MetricCard,PageHeader,Panel,StatusBadge} from "./common";import {TARIFF,buildingData,buildings,daily,detectionFloor,hourly,monthly,roomById,type Alert,type Room} from "@/data/energy";import {useEnergy} from "@/context/EnergyContext";
-const Select=({children,...props}:React.SelectHTMLAttributes<HTMLSelectElement>)=><select className="control" {...props}>{children}</select>;
-const roomIcon=(b:string)=>b.includes("Mechanical")?Factory:b.includes("Library")?BookOpen:Building2;
-function ActiveLeaks(){const {rooms,alerts}=useEnergy();const active=alerts.filter(a=>a.status==="Active");return <Panel title="Active Energy Leaks" subtitle="Rooms requiring immediate attention" action={<Link to="/alerts" className="text-xs font-semibold text-primary">View all alerts</Link>}><div className="grid gap-3 xl:grid-cols-3">{active.map(a=>{const r=roomById(a.roomId)??rooms.find(x=>x.id===a.roomId);if(!r)return null;return <div className="leak-card" key={a.id}><div className="flex items-start justify-between"><div><StatusBadge status={a.severity}/><h3 className="mt-3 font-semibold">{r.name}</h3><p className="text-xs text-muted-foreground">{r.building}</p></div><Siren className="size-5 text-danger"/></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><span><small>Current usage</small><b>{r.current} W</b></span><span><small>Baseline</small><b>{r.baseline} W</b></span><span><small>Excess</small><b>{r.current-r.baseline} W</b></span><span><small>Duration</small><b>{r.duration} hours</b></span><span><small>Waste</small><b>{r.waste.toFixed(2)} kWh</b></span><span><small>Est. cost</small><b>₹{Math.round(r.cost)}</b></span></div><div className="mt-4 border-t border-border pt-3"><DetailLink id={r.id}/></div></div>})}</div></Panel>}
-export function Dashboard(){const {alerts,rooms}=useEnergy();const active=alerts.filter(a=>a.status==="Active");const [building,setBuilding]=useState<Room[]|null>(null);return <div className="page"><section className="intro"><div className="relative z-10 max-w-3xl"><span className="eyebrow"><Zap/> CAMPUS ENERGY LEAK DETECTOR</span><h1>Turn Hidden Energy Waste Into <em>Actionable Insights.</em></h1><p>An intelligent room-level monitoring system that learns normal consumption patterns and detects unusual energy usage before it becomes unnecessary cost.</p><div className="mt-6 flex flex-wrap gap-3"><Button asChild><a href="#overview"><Activity/>View Live Dashboard</a></Button><Button variant="outline" asChild><Link to="/leak-detection">Explore Detection<ArrowRight/></Link></Button></div></div><div className="energy-visual" aria-hidden="true"><span/><span/><span/><Zap/></div></section><div id="overview" className="pt-7"><PageHeader title="Campus Energy Overview" description="Real-time monitoring and intelligent energy leak detection"/><div className="kpi-grid"><MetricCard icon={<Activity/>} label="Total Campus Consumption" value="12.8 kW" detail="Across 8 monitored rooms" trend="-4.2%"/><MetricCard icon={<Siren/>} label="Active Energy Leaks" value={String(active.length)} detail="2 critical · 1 high priority" trend="+1 today"/><MetricCard icon={<Zap/>} label="Energy Wasted Today" value="17.93 kWh" detail="From active leak events" trend="+8.1%"/><MetricCard icon={<IndianRupee/>} label="Estimated Cost Today" value="₹185" detail={`At ₹${TARIFF.toFixed(2)} per kWh`} trend="+₹22"/><MetricCard icon={<TrendingDown/>} label="Potential Monthly Savings" value="₹5,540" detail="If detected leaks are resolved" trend="-12.4%"/></div><div className="mt-5 grid gap-5 xl:grid-cols-[1.65fr_.75fr]"><Panel title="Campus Energy Consumption" subtitle="Today's consumption in watts · 15-minute model"><ConsumptionChart data={hourly}/></Panel><Panel title="Live System Pulse" subtitle="Current monitoring coverage"><div className="space-y-5"><div className="pulse-ring"><Zap/></div>{[["Rooms online","8 / 8"],["Readings today","768"],["Detection interval","15 min"],["Baseline coverage","98.7%"]].map(([a,b])=><div key={a} className="flex justify-between border-b border-border pb-3 text-sm"><span className="text-muted-foreground">{a}</span><b>{b}</b></div>)}</div></Panel></div><div className="mt-5"><ActiveLeaks/></div><Panel className="mt-5" title="Campus Building Status" subtitle="Select a building to inspect its current energy state"><div className="campus-grid">{buildings.slice(1).map(name=>{const subset=rooms.filter(r=>r.building===name);const leaks=subset.filter(r=>r.status==="Leak Detected").length;const warnings=subset.filter(r=>r.status==="Warning").length;const status=leaks?"Leak Detected":warnings?"Warning":"Normal";const Icon=roomIcon(name);return <button key={name} className="building-card" onClick={()=>setBuilding(subset)}><Icon/><span><b>{name}</b><small>{subset.length} room{subset.length!==1?"s":""} · {(subset.reduce((s,r)=>s+r.current,0)/1000).toFixed(1)} kW</small></span><StatusBadge status={status}/></button>})}</div></Panel></div><Dialog open={!!building} onOpenChange={()=>setBuilding(null)}><DialogContent><DialogHeader><DialogTitle>{building?.[0]?.building}</DialogTitle><DialogDescription>Current status across this monitored area.</DialogDescription></DialogHeader>{building?.map(r=><div key={r.id} className="flex items-center justify-between rounded-md border border-border p-3"><span><b className="block text-sm">{r.name}</b><small className="text-muted-foreground">{r.current} W · baseline {r.baseline} W</small></span><StatusBadge status={r.status}/></div>)}</DialogContent></Dialog></div>}
-export function Monitoring(){const {rooms}=useEnergy();const [range,setRange]=useState("Today"),[building,setBuilding]=useState("All buildings"),[room,setRoom]=useState("All rooms"),[dayType,setDayType]=useState("All days");const visible=rooms.filter(r=>(building==="All buildings"||r.building===building)&&(room==="All rooms"||r.id===room));return <div className="page"><PageHeader title="Energy Monitoring" description="Explore deterministic sample readings across rooms and buildings"/><div className="filter-bar"><div className="segmented">{["Today","7 Days","30 Days","Custom"].map(v=><button key={v} onClick={()=>setRange(v)} className={range===v?"active":""}>{v}</button>)}</div><Select value={building} onChange={e=>setBuilding(e.target.value)}>{buildings.map(b=><option key={b}>{b}</option>)}</Select><Select value={room} onChange={e=>setRoom(e.target.value)}><option>All rooms</option>{rooms.map(r=><option value={r.id} key={r.id}>{r.name}</option>)}</Select><Select value={dayType} onChange={e=>setDayType(e.target.value)}><option>All days</option><option>Weekday</option><option>Weekend</option></Select></div><div className="grid gap-5 xl:grid-cols-2"><Panel title="Hourly energy consumption" subtitle={`${range} · ${building}`}><ConsumptionChart data={hourly} height={280}/></Panel><Panel title="Daily energy consumption" subtitle={`${dayType} sample profile`}><TrendChart data={daily}/></Panel><Panel title="Baseline vs actual" subtitle="Learned baseline compared with observed load"><TrendChart data={daily}/></Panel><Panel title="Energy by building" subtitle="Consumption in kWh"><SimpleBar data={buildingData}/></Panel></div><Panel className="mt-5" title="Room-level power" subtitle={`${visible.length} rooms match the selected filters`}><div className="table-wrap"><table><thead><tr><th>Room</th><th>Current Power</th><th>Baseline</th><th>Difference</th><th>Status</th><th/></tr></thead><tbody>{visible.map(r=><tr key={r.id}><td><b>{r.name}</b><small>{r.building}</small></td><td>{r.current} W</td><td>{r.baseline} W</td><td className={r.current-r.baseline>=50?"text-danger":""}>+{r.current-r.baseline} W</td><td><StatusBadge status={r.status}/></td><td><DetailLink id={r.id} label="Open"/></td></tr>)}</tbody></table></div>{visible.length===0&&<EmptyState text="No rooms match these filters."/>}</Panel></div>}
-const pipeline=["Sensor Data","15-Minute Readings","Room-Specific Baseline","Z-Score Analysis","Validation Guards","Leak Alert","Cost Estimation"];
-export function LeakDetection(){const {rooms}=useEnergy();const [roomId,setRoomId]=useState("cs-lab-1"),[power,setPower]=useState(1622),[duration,setDuration]=useState(3),[result,setResult]=useState(false);const room=rooms.find(r=>r.id===roomId)??rooms[0];if(!room)return <EmptyState text="No room data is available."/>;const excess=Math.max(0,power-room.baseline),sigma=Math.max(room.baseline*.15,3),z=(power-room.baseline)/sigma,waste=excess*duration/1000,cost=waste*TARIFF,leak=z>=2.5&&excess>=50&&duration>=.5;const analyze=()=>{setResult(true);toast.success("Reading analyzed",{description:leak?"Energy leak detected.":"Reading is within guarded limits."})};return <div className="page"><PageHeader title="Intelligent Leak Detection" description="The system learns each room's normal behavior instead of using one fixed campus-wide threshold."/><Panel title="Detection pipeline" subtitle="From sensor reading to cost-aware action"><div className="pipeline">{pipeline.map((p,i)=><div key={p} className="contents"><div className="pipeline-step"><span>{i+1}</span>{p}</div>{i<pipeline.length-1&&<ArrowRight/>}</div>)}</div></Panel><div className="mt-5 grid gap-5 xl:grid-cols-[1fr_1.1fr]"><div className="space-y-5"><Panel title="Algorithm explanation" subtitle="Room-specific statistical anomaly score"><div className="formula">z = (x − μ) / σ</div><div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs"><span><b>x</b>Current reading</span><span><b>μ</b>Expected baseline</span><span><b>σ</b>Normal variation</span></div><div className="mt-4 rounded-md bg-primary/10 p-3 text-center text-sm font-semibold text-primary">Prototype threshold: z ≥ 2.5</div></Panel><div className="grid gap-3 sm:grid-cols-3">{[["Sigma Floor","σ ≥ max(15% of μ, 3 W)",Gauge],["Minimum Excess","At least 50 W above baseline",Zap],["Minimum Duration","2 readings = 30 minutes",Clock3]].map(([t,d,I])=>{const Icon=I as typeof Gauge;return <div className="guard-card" key={String(t)}><Icon/><b>{String(t)}</b><small>{String(d)}</small></div>})}</div></div><Panel title="Test Energy Reading" subtitle="Run the prototype rules against a sample room"><div className="form-grid"><label>Room<Select value={roomId} onChange={e=>{setRoomId(e.target.value);const r=rooms.find(x=>x.id===e.target.value);if(r)setPower(r.current)}}>{rooms.map(r=><option value={r.id} key={r.id}>{r.name}</option>)}</Select></label><label>Current power (W)<Input type="number" min="0" value={power} onChange={e=>setPower(Number(e.target.value))}/></label><label>Duration (hours)<Input type="number" min="0" step=".25" value={duration} onChange={e=>setDuration(Number(e.target.value))}/></label></div><Button className="mt-4 w-full" onClick={analyze}><Sparkles/>Analyze reading</Button>{result&&<div className={`result-box ${leak?"result-leak":"result-normal"}`}><div className="flex items-center gap-2 text-sm font-bold">{leak?<AlertTriangle/>:<CheckCircle2/>}{leak?"ENERGY LEAK DETECTED":"NO LEAK DETECTED"}</div><div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">{[["Baseline",`${room.baseline} W`],["Excess",`${excess} W`],["Z-score",z.toFixed(2)],["Severity",z>10?"Critical":z>=2.5?"High":"Normal"],["Wasted",`${waste.toFixed(2)} kWh`],["Est. cost",`₹${cost.toFixed(0)}`]].map(([a,b])=><span key={a}><small>{a}</small><b>{b}</b></span>)}</div></div>}</Panel></div><BaselineAndCollection/><Validation/><LimitationsRoadmap/></div>}
-function BaselineAndCollection(){return <div className="mt-5 grid gap-5 xl:grid-cols-2"><Panel title="How the baseline works" subtitle="No fixed threshold is applied to every room"><div className="equation-flow">{["Room","Hour","Weekday / Weekend","Recent matching history"].map((x,i)=><div className="contents" key={x}><span>{x}</span>{i<3&&<b>+</b>}</div>)}<b>=</b><strong>Expected baseline</strong></div><p className="mt-5 text-sm text-muted-foreground">The prototype calculates the mean μ and spread σ for each room/hour/day-type bucket using a trailing 7 matching days.</p></Panel><Panel title="Data collection" subtitle="A consistent 15-minute monitoring loop"><div className="timeline">{["Every 15 minutes","Collect energy reading","Store reading","Compare with room baseline","Calculate anomaly score","Apply guards","Generate alert","Estimate cost"].map((x,i)=><div key={x}><span>{i+1}</span><p>{x}</p></div>)}</div></Panel></div>}
-function Validation(){return <div className="mt-5"><Panel title="Prototype Validation" subtitle="Prototype validation results on the supplied test dataset"><div className="grid gap-4 lg:grid-cols-[1fr_1fr]"><div className="validation-metrics">{[["Leaks detected","4 / 4"],["False positives","0"],["Precision","1.000"],["Recall","1.000"],["F1 Score","1.000"]].map(([a,b])=><span key={a}><small>{a}</small><b>{b}</b></span>)}</div><div className="confusion"><div><small>Actual Leak</small><b>Detected Leak</b><strong>4</strong></div><div><small>Actual Normal</small><b>No False Positive</b><strong>0</strong></div></div></div><p className="mt-4 flex gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground"><Info className="size-4 shrink-0"/>Prototype results depend on the dataset and operating assumptions. Real-world deployment requires validation with live campus data.</p></Panel><Panel className="mt-5" title="Smallest Detectable Leak" subtitle="Comparison of baseline, detectable draw, and excess in watts"><SimpleBar data={detectionFloor} dataKey="detectable" name="Smallest detectable draw" height={300}/></Panel></div>}
-function LimitationsRoadmap(){const limitations=["Cold start requires historical data.","Weekend buckets have fewer samples.","Brand-new buildings may have limited baseline history.","A permanent leak can eventually become part of the baseline.","Schedule changes can cause alerts.","Detection is currently room-level, not device-level.","Prototype uses synthetic/test data.","Missing or irregular readings are not fully modeled."];const phases=["Prototype dashboard","Live IoT / smart meter integration","Cloud backend","Mobile notifications","Advanced anomaly detection","Campus-wide deployment"];return <div className="mt-5 grid gap-5 xl:grid-cols-2"><Panel title="Current Limitations" subtitle="Known boundaries of this prototype"><ul className="limitations">{limitations.map(x=><li key={x}><AlertTriangle/>{x}</li>)}</ul></Panel><Panel title="Future Roadmap" subtitle="Future plans — not current features"><div className="roadmap">{phases.map((x,i)=><div key={x}><span>{i+1}</span><p><small>PHASE {i+1}</small><b>{x}</b></p></div>)}</div><p className="mt-4 text-xs text-muted-foreground">Potential improvements: academic calendar awareness, repeated alert escalation, seasonal models, Isolation Forest, missing-data handling, and device-level monitoring.</p></Panel></div>}
-export function Rooms(){const {rooms}=useEnergy();const [query,setQuery]=useState(""),[filter,setFilter]=useState("All");const visible=rooms.filter(r=>r.name.toLowerCase().includes(query.toLowerCase())&&(filter==="All"||(filter==="Leak"?r.status==="Leak Detected":r.status===filter)));return <div className="page"><PageHeader title="Rooms" description="Search and inspect room-level energy performance"/><div className="filter-bar"><div className="relative min-w-64 flex-1"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground"/><Input className="pl-9" placeholder="Search rooms..." value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="segmented">{["All","Normal","Warning","Leak"].map(x=><button key={x} className={filter===x?"active":""} onClick={()=>setFilter(x)}>{x}</button>)}</div></div>{visible.length?<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{visible.map(r=><Link key={r.id} to="/rooms/$roomId" params={{roomId:r.id}} className="room-card"><div className="flex justify-between"><span className="icon-tile"><Building2/></span><StatusBadge status={r.status}/></div><h2>{r.name}</h2><p>{r.building}</p><div className="meter"><span style={{width:`${Math.min(100,r.current/20)}%`}}/></div><div className="grid grid-cols-2 gap-3 text-xs"><span><small>Current power</small><b>{r.current} W</b></span><span><small>Baseline</small><b>{r.baseline} W</b></span><span><small>Daily estimate</small><b>{r.daily} kWh</b></span><span><small>Updated</small><b>{r.lastUpdated}</b></span></div></Link>)}</div>:<EmptyState text="No rooms match your search and status filter."/>}</div>}
-export function RoomDetail({roomId}:{roomId:string}){const {rooms,alerts,resolve}=useEnergy();const room=rooms.find(r=>r.id===roomId);if(!room)return <EmptyState text="This room could not be found."/>;const alert=alerts.find(a=>a.roomId===room.id&&a.status==="Active");const data=hourly.map((h,i)=>({...h,actual:Math.max(room.baseline*.8,room.baseline+(Math.sin(i)*room.sigma)+(i>13&&i<19&&alert?(room.current-room.baseline):0)),baseline:room.baseline}));const doResolve=()=>{if(alert){resolve(alert.id);toast.success("Alert resolved",{description:`${room.name} returned to monitored status.`})}};return <div className="page"><div className="mb-4"><Link to="/rooms" className="text-xs font-semibold text-primary">← Back to rooms</Link></div><PageHeader title={room.name} description={`${room.building} · Last updated ${room.lastUpdated}`} action={<StatusBadge status={room.status}/>}/><div className="kpi-grid">{[["Current consumption",`${room.current} W`,Activity],["Normal baseline",`${room.baseline} W`,Gauge],["Z-score",room.zScore.toFixed(2),BarChart3],["Excess power",`${Math.max(0,room.current-room.baseline)} W`,Zap],["Estimated waste",`${room.waste.toFixed(2)} kWh`,BatteryCharging],["Estimated cost",`₹${Math.round(room.cost)}`,IndianRupee],["Duration",`${room.duration} hours`,Clock3]].map(([a,b,I])=>{const Icon=I as typeof Gauge;return <MetricCard key={String(a)} icon={<Icon/>} label={String(a)} value={String(b)} detail="Based on current prototype reading"/>})}</div><Panel className="mt-5" title="Actual vs Expected Consumption" subtitle="Anomaly region highlighted against the room-specific baseline"><ConsumptionChart data={data}/></Panel><div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto]"><Panel title="Why was this flagged?"><p className="text-sm leading-6 text-muted-foreground">Current consumption is significantly above this room's learned baseline and has remained elevated for multiple consecutive readings.</p></Panel>{alert&&<div className="panel flex min-w-64 flex-col justify-center"><b className="text-sm">Ready for review?</b><p className="mb-4 mt-1 text-xs text-muted-foreground">Resolve after the cause has been addressed.</p><Button onClick={doResolve}><Check/>Mark as Resolved</Button></div>}</div></div>}
-export function Analytics(){const waste=useEnergy().rooms.map(r=>({name:r.name,waste:r.waste}));return <div className="page"><PageHeader title="Analytics" description="Advanced patterns and prototype insights from consistent sample data"/><div className="grid gap-5 xl:grid-cols-2"><Panel title="Energy consumption by building"><SimpleBar data={buildingData}/></Panel><Panel title="Energy waste by room"><SimpleBar data={waste} dataKey="waste" name="Waste (kWh)"/></Panel><Panel title="Daily consumption trend"><TrendChart data={daily}/></Panel><Panel title="Weekly consumption trend"><TrendChart data={daily.map((d,i)=>({...d,actual:d.actual*(i+1),baseline:d.baseline*(i+1)}))}/></Panel><Panel title="Estimated monthly waste"><TrendChart data={monthly} xKey="month" keys={["waste"]}/></Panel><Panel title="Normal vs abnormal consumption"><SimpleBar data={[{name:"Normal",consumption:86},{name:"Abnormal",consumption:18}]} /></Panel></div><Panel className="mt-5" title="Campus Energy Insights" subtitle="Informational observations from this supplied prototype dataset"><div className="insight-grid">{["CS Lab 1 currently shows unusually high consumption.","Mechanical Lab 1 has the highest detected excess load.","Hostel Block A contributes significant after-hours consumption.","Several rooms remain within their normal baseline."].map((x,i)=><div key={x}><Lightbulb/><span><small>PROTOTYPE INSIGHT {i+1}</small>{x}</span></div>)}</div></Panel></div>}
-export function Alerts(){const {alerts,rooms,resolve,dismiss}=useEnergy();const [tab,setTab]=useState("Active"),[confirm,setConfirm]=useState<{alert:Alert;action:"resolve"|"dismiss"}|null>(null);const visible=alerts.filter(a=>tab==="All"||a.status===tab);const act=()=>{if(!confirm)return;if(confirm.action==="resolve"){resolve(confirm.alert.id);toast.success("Alert resolved")}else{dismiss(confirm.alert.id);toast.success("Alert dismissed")}setConfirm(null)};return <div className="page"><PageHeader title="Alerts" description="Review, resolve, and dismiss detected energy anomalies"/><div className="filter-bar"><div className="segmented">{["Active","Resolved","All"].map(x=><button key={x} className={tab===x?"active":""} onClick={()=>setTab(x)}>{x}</button>)}</div><span className="text-xs text-muted-foreground">{visible.length} alert{visible.length!==1?"s":""}</span></div><Panel><div className="table-wrap"><table><thead><tr><th>Severity</th><th>Room</th><th>Detected At</th><th>Current</th><th>Baseline</th><th>Excess</th><th>Duration</th><th>Cost</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visible.map(a=>{const r=rooms.find(x=>x.id===a.roomId);if(!r)return null;return <tr key={a.id}><td><StatusBadge status={a.severity}/></td><td><b>{r.name}</b><small>{a.id}</small></td><td>{a.detectedAt}</td><td>{r.current} W</td><td>{r.baseline} W</td><td>{r.current-r.baseline} W</td><td>{r.duration} h</td><td>₹{Math.round(r.cost)}</td><td><StatusBadge status={a.status}/></td><td><div className="flex gap-2"><Button size="sm" variant="outline" asChild><Link to="/rooms/$roomId" params={{roomId:r.id}}>View</Link></Button>{a.status==="Active"&&<><Button size="sm" onClick={()=>setConfirm({alert:a,action:"resolve"})}>Resolve</Button><Button size="sm" variant="ghost" onClick={()=>setConfirm({alert:a,action:"dismiss"})}>Dismiss</Button></>}</div></td></tr>})}</tbody></table></div>{!visible.length&&<EmptyState text={`No ${tab.toLowerCase()} alerts.`}/>}</Panel><Dialog open={!!confirm} onOpenChange={()=>setConfirm(null)}><DialogContent><DialogHeader><DialogTitle>{confirm?.action==="resolve"?"Resolve alert?":"Dismiss alert?"}</DialogTitle><DialogDescription>This action updates the alert across the prototype dashboard.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={()=>setConfirm(null)}>Cancel</Button><Button variant={confirm?.action==="dismiss"?"destructive":"default"} onClick={act}>Confirm</Button></DialogFooter></DialogContent></Dialog></div>}
-export function CostSavings(){return <div className="page"><PageHeader title="Energy Waste & Cost" description={`Electricity tariff: ₹${TARIFF.toFixed(2)} / kWh`}/><div className="kpi-grid">{[["Today's Waste","17.93 kWh",Zap],["Weekly Waste","83.4 kWh",CalendarDays],["Monthly Projected Waste","537.9 kWh",LineIcon],["Today's Cost","₹185",IndianRupee],["Monthly Projected Cost","₹5,540",WalletCards],["Potential Savings","₹5,540",TrendingDown]].map(([a,b,I])=>{const Icon=I as typeof Zap;return <MetricCard key={String(a)} label={String(a)} value={String(b)} icon={<Icon/>} detail="Calculated from supplied prototype data"/>})}</div><div className="mt-5 grid gap-5 xl:grid-cols-3"><Panel title="Waste by room"><SimpleBar data={[{name:"CS Lab 1",waste:4.8},{name:"Hostel A",waste:4.16},{name:"Mech Lab 1",waste:8.97}]} dataKey="waste" name="Waste (kWh)"/></Panel><Panel title="Cost by building"><SimpleBar data={buildingData} dataKey="cost" name="Cost (₹)"/></Panel><Panel title="Monthly projected savings"><TrendChart data={monthly} xKey="month" keys={["savings"]}/></Panel></div><Panel className="mt-5" title="How cost is calculated" subtitle="Transparent calculations for prototype review"><div className="calculation"><div><span>1</span><p><b>Find excess power</b>Current Power − Baseline</p></div><ArrowRight/><div><span>2</span><p><b>Calculate wasted energy</b>Excess × Duration / 1000</p></div><ArrowRight/><div><span>3</span><p><b>Estimate cost</b>Wasted kWh × ₹10.30</p></div></div><div className="mt-5 rounded-md bg-muted p-4 font-mono text-sm">CS Lab 1: (1622 W − 21 W) × 3 h / 1000 = 4.80 kWh × ₹10.30 ≈ ₹49</div></Panel></div>}
-export function SettingsPage(){const defaults={z:2.5,excess:50,duration:30,sigma:15,tariff:10.3,email:false,dashboard:true,critical:true};const [settings,setSettings]=useState(defaults);useEffect(()=>{try{const saved=localStorage.getItem("campus-settings");if(saved)setSettings(JSON.parse(saved))}catch{}},[]);const save=()=>{localStorage.setItem("campus-settings",JSON.stringify(settings));toast.success("Settings saved",{description:"Your prototype preferences are stored on this device."})};return <div className="page"><PageHeader title="Settings" description="Configure local prototype detection and notification preferences"/><div className="grid gap-5 xl:grid-cols-2"><Panel title="Detection Settings" subtitle="Thresholds applied by the simulation"><div className="settings-list">{[["Z-score threshold","z",.1],["Minimum excess (W)","excess",5],["Minimum duration (minutes)","duration",15],["Sigma floor (% baseline)","sigma",1]].map(([label,key,step])=><label key={String(key)}>{label}<Input type="number" step={Number(step)} value={settings[key as keyof typeof settings] as number} onChange={e=>setSettings({...settings,[String(key)]:Number(e.target.value)})}/></label>)}</div><p className="mt-3 text-xs text-muted-foreground">Sigma floor also enforces a minimum of 3 W.</p></Panel><Panel title="Energy Settings"><div className="settings-list"><label>Electricity tariff (₹/kWh)<Input type="number" step=".1" value={settings.tariff} onChange={e=>setSettings({...settings,tariff:Number(e.target.value)})}/></label></div></Panel><Panel title="Notification Settings" subtitle="Email delivery is visual only in this prototype"><div className="space-y-2">{[["Email alerts","email"],["Dashboard alerts","dashboard"],["Critical alert emphasis","critical"]].map(([label,key])=><label key={key} className="toggle-row"><span><b>{label}</b><small>{key==="email"?"No messages are actually sent":"Show this notification type in the dashboard"}</small></span><Switch checked={settings[key as keyof typeof settings] as boolean} onCheckedChange={v=>setSettings({...settings,[String(key)]:v})}/></label>)}</div></Panel></div><Button className="mt-5" onClick={save}><Check/>Save Settings</Button></div>}
+import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  BatteryCharging,
+  BookOpen,
+  Building2,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  Clock3,
+  Factory,
+  Gauge,
+  IndianRupee,
+  Info,
+  Lightbulb,
+  LineChart as LineIcon,
+  Search,
+  ShieldCheck,
+  Siren,
+  Sparkles,
+  TrendingDown,
+  WalletCards,
+  Zap,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ConsumptionChart, SimpleBar, TrendChart } from "./Charts";
+import { DetailLink, EmptyState, MetricCard, PageHeader, Panel, StatusBadge } from "./common";
+import {
+  TARIFF,
+  buildingData,
+  buildings,
+  daily,
+  detectionFloor,
+  hourly,
+  monthly,
+  roomById,
+  type Alert,
+  type Room,
+} from "@/data/energy";
+import { useEnergy } from "@/context/EnergyContext";
+const Select = ({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) => (
+  <select className="control" {...props}>
+    {children}
+  </select>
+);
+const roomIcon = (b: string) =>
+  b.includes("Mechanical") ? Factory : b.includes("Library") ? BookOpen : Building2;
+function ActiveLeaks() {
+  const { rooms, alerts } = useEnergy();
+  const active = alerts.filter((a) => a.status === "Active");
+  return (
+    <Panel
+      title="Active Energy Leaks"
+      subtitle="Rooms requiring immediate attention"
+      action={
+        <Link to="/alerts" className="text-xs font-semibold text-primary">
+          View all alerts
+        </Link>
+      }
+    >
+      <div className="grid gap-3 xl:grid-cols-3">
+        {active.map((a) => {
+          const r = roomById(a.roomId) ?? rooms.find((x) => x.id === a.roomId);
+          if (!r) return null;
+          return (
+            <div className="leak-card" key={a.id}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <StatusBadge status={a.severity} />
+                  <h3 className="mt-3 font-semibold">{r.name}</h3>
+                  <p className="text-xs text-muted-foreground">{r.building}</p>
+                </div>
+                <Siren className="size-5 text-danger" />
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                <span>
+                  <small>Current usage</small>
+                  <b>{r.current} W</b>
+                </span>
+                <span>
+                  <small>Baseline</small>
+                  <b>{r.baseline} W</b>
+                </span>
+                <span>
+                  <small>Excess</small>
+                  <b>{r.current - r.baseline} W</b>
+                </span>
+                <span>
+                  <small>Duration</small>
+                  <b>{r.duration} hours</b>
+                </span>
+                <span>
+                  <small>Waste</small>
+                  <b>{r.waste.toFixed(2)} kWh</b>
+                </span>
+                <span>
+                  <small>Est. cost</small>
+                  <b>₹{Math.round(r.cost)}</b>
+                </span>
+              </div>
+              <div className="mt-4 border-t border-border pt-3">
+                <DetailLink id={r.id} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+export function Dashboard() {
+  const { alerts, rooms } = useEnergy();
+  const active = alerts.filter((a) => a.status === "Active");
+  const [building, setBuilding] = useState<Room[] | null>(null);
+  return (
+    <div className="page">
+      <section className="intro">
+        <div className="relative z-10 max-w-3xl">
+          <span className="eyebrow">
+            <Zap /> CAMPUS ENERGY LEAK DETECTOR
+          </span>
+          <h1>
+            Turn Hidden Energy Waste Into <em>Actionable Insights.</em>
+          </h1>
+          <p>
+            An intelligent room-level monitoring system that learns normal consumption patterns and
+            detects unusual energy usage before it becomes unnecessary cost.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button asChild>
+              <a href="#overview">
+                <Activity />
+                View Live Dashboard
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/leak-detection">
+                Explore Detection
+                <ArrowRight />
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="energy-visual" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <Zap />
+        </div>
+      </section>
+      <div id="overview" className="pt-7">
+        <PageHeader
+          title="Campus Energy Overview"
+          description="Real-time monitoring and intelligent energy leak detection"
+        />
+        <div className="kpi-grid">
+          <MetricCard
+            icon={<Activity />}
+            label="Total Campus Consumption"
+            value="12.8 kW"
+            detail="Across 8 monitored rooms"
+            trend="-4.2%"
+          />
+          <MetricCard
+            icon={<Siren />}
+            label="Active Energy Leaks"
+            value={String(active.length)}
+            detail="2 critical · 1 high priority"
+            trend="+1 today"
+          />
+          <MetricCard
+            icon={<Zap />}
+            label="Energy Wasted Today"
+            value="17.93 kWh"
+            detail="From active leak events"
+            trend="+8.1%"
+          />
+          <MetricCard
+            icon={<IndianRupee />}
+            label="Estimated Cost Today"
+            value="₹185"
+            detail={`At ₹${TARIFF.toFixed(2)} per kWh`}
+            trend="+₹22"
+          />
+          <MetricCard
+            icon={<TrendingDown />}
+            label="Potential Monthly Savings"
+            value="₹5,540"
+            detail="If detected leaks are resolved"
+            trend="-12.4%"
+          />
+        </div>
+        <div className="mt-5 grid gap-5 xl:grid-cols-[1.65fr_.75fr]">
+          <Panel
+            title="Campus Energy Consumption"
+            subtitle="Today's consumption in watts · 15-minute model"
+          >
+            <ConsumptionChart data={hourly} />
+          </Panel>
+          <Panel title="Live System Pulse" subtitle="Current monitoring coverage">
+            <div className="space-y-5">
+              <div className="pulse-ring">
+                <Zap />
+              </div>
+              {[
+                ["Rooms online", "8 / 8"],
+                ["Readings today", "768"],
+                ["Detection interval", "15 min"],
+                ["Baseline coverage", "98.7%"],
+              ].map(([a, b]) => (
+                <div key={a} className="flex justify-between border-b border-border pb-3 text-sm">
+                  <span className="text-muted-foreground">{a}</span>
+                  <b>{b}</b>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-5">
+          <ActiveLeaks />
+        </div>
+        <Panel
+          className="mt-5"
+          title="Campus Building Status"
+          subtitle="Select a building to inspect its current energy state"
+        >
+          <div className="campus-grid">
+            {buildings.slice(1).map((name) => {
+              const subset = rooms.filter((r) => r.building === name);
+              const leaks = subset.filter((r) => r.status === "Leak Detected").length;
+              const warnings = subset.filter((r) => r.status === "Warning").length;
+              const status = leaks ? "Leak Detected" : warnings ? "Warning" : "Normal";
+              const Icon = roomIcon(name);
+              return (
+                <button key={name} className="building-card" onClick={() => setBuilding(subset)}>
+                  <Icon />
+                  <span>
+                    <b>{name}</b>
+                    <small>
+                      {subset.length} room{subset.length !== 1 ? "s" : ""} ·{" "}
+                      {(subset.reduce((s, r) => s + r.current, 0) / 1000).toFixed(1)} kW
+                    </small>
+                  </span>
+                  <StatusBadge status={status} />
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
+      </div>
+      <Dialog open={!!building} onOpenChange={() => setBuilding(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{building?.[0]?.building}</DialogTitle>
+            <DialogDescription>Current status across this monitored area.</DialogDescription>
+          </DialogHeader>
+          {building?.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-center justify-between rounded-md border border-border p-3"
+            >
+              <span>
+                <b className="block text-sm">{r.name}</b>
+                <small className="text-muted-foreground">
+                  {r.current} W · baseline {r.baseline} W
+                </small>
+              </span>
+              <StatusBadge status={r.status} />
+            </div>
+          ))}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+export function Monitoring() {
+  const { rooms } = useEnergy();
+  const [range, setRange] = useState("Today"),
+    [building, setBuilding] = useState("All buildings"),
+    [room, setRoom] = useState("All rooms"),
+    [dayType, setDayType] = useState("All days");
+  const visible = rooms.filter(
+    (r) =>
+      (building === "All buildings" || r.building === building) &&
+      (room === "All rooms" || r.id === room),
+  );
+  return (
+    <div className="page">
+      <PageHeader
+        title="Energy Monitoring"
+        description="Explore deterministic sample readings across rooms and buildings"
+      />
+      <div className="filter-bar">
+        <div className="segmented">
+          {["Today", "7 Days", "30 Days", "Custom"].map((v) => (
+            <button key={v} onClick={() => setRange(v)} className={range === v ? "active" : ""}>
+              {v}
+            </button>
+          ))}
+        </div>
+        <Select value={building} onChange={(e) => setBuilding(e.target.value)}>
+          {buildings.map((b) => (
+            <option key={b}>{b}</option>
+          ))}
+        </Select>
+        <Select value={room} onChange={(e) => setRoom(e.target.value)}>
+          <option>All rooms</option>
+          {rooms.map((r) => (
+            <option value={r.id} key={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </Select>
+        <Select value={dayType} onChange={(e) => setDayType(e.target.value)}>
+          <option>All days</option>
+          <option>Weekday</option>
+          <option>Weekend</option>
+        </Select>
+      </div>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Panel title="Hourly energy consumption" subtitle={`${range} · ${building}`}>
+          <ConsumptionChart data={hourly} height={280} />
+        </Panel>
+        <Panel title="Daily energy consumption" subtitle={`${dayType} sample profile`}>
+          <TrendChart data={daily} />
+        </Panel>
+        <Panel title="Baseline vs actual" subtitle="Learned baseline compared with observed load">
+          <TrendChart data={daily} />
+        </Panel>
+        <Panel title="Energy by building" subtitle="Consumption in kWh">
+          <SimpleBar data={buildingData} />
+        </Panel>
+      </div>
+      <Panel
+        className="mt-5"
+        title="Room-level power"
+        subtitle={`${visible.length} rooms match the selected filters`}
+      >
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Current Power</th>
+                <th>Baseline</th>
+                <th>Difference</th>
+                <th>Status</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <b>{r.name}</b>
+                    <small>{r.building}</small>
+                  </td>
+                  <td>{r.current} W</td>
+                  <td>{r.baseline} W</td>
+                  <td className={r.current - r.baseline >= 50 ? "text-danger" : ""}>
+                    +{r.current - r.baseline} W
+                  </td>
+                  <td>
+                    <StatusBadge status={r.status} />
+                  </td>
+                  <td>
+                    <DetailLink id={r.id} label="Open" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {visible.length === 0 && <EmptyState text="No rooms match these filters." />}
+      </Panel>
+    </div>
+  );
+}
+const pipeline = [
+  "Sensor Data",
+  "15-Minute Readings",
+  "Room-Specific Baseline",
+  "Z-Score Analysis",
+  "Validation Guards",
+  "Leak Alert",
+  "Cost Estimation",
+];
+export function LeakDetection() {
+  const { rooms } = useEnergy();
+  const [roomId, setRoomId] = useState("cs-lab-1"),
+    [power, setPower] = useState(1622),
+    [duration, setDuration] = useState(3),
+    [result, setResult] = useState(false);
+  const room = rooms.find((r) => r.id === roomId) ?? rooms[0];
+  if (!room) return <EmptyState text="No room data is available." />;
+  const excess = Math.max(0, power - room.baseline),
+    sigma = Math.max(room.baseline * 0.15, 3),
+    z = (power - room.baseline) / sigma,
+    waste = (excess * duration) / 1000,
+    cost = waste * TARIFF,
+    leak = z >= 2.5 && excess >= 50 && duration >= 0.5;
+  const analyze = () => {
+    setResult(true);
+    toast.success("Reading analyzed", {
+      description: leak ? "Energy leak detected." : "Reading is within guarded limits.",
+    });
+  };
+  return (
+    <div className="page">
+      <PageHeader
+        title="Intelligent Leak Detection"
+        description="The system learns each room's normal behavior instead of using one fixed campus-wide threshold."
+      />
+      <Panel title="Detection pipeline" subtitle="From sensor reading to cost-aware action">
+        <div className="pipeline">
+          {pipeline.map((p, i) => (
+            <div key={p} className="contents">
+              <div className="pipeline-step">
+                <span>{i + 1}</span>
+                {p}
+              </div>
+              {i < pipeline.length - 1 && <ArrowRight />}
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_1.1fr]">
+        <div className="space-y-5">
+          <Panel title="Algorithm explanation" subtitle="Room-specific statistical anomaly score">
+            <div className="formula">z = (x − μ) / σ</div>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+              <span>
+                <b>x</b>Current reading
+              </span>
+              <span>
+                <b>μ</b>Expected baseline
+              </span>
+              <span>
+                <b>σ</b>Normal variation
+              </span>
+            </div>
+            <div className="mt-4 rounded-md bg-primary/10 p-3 text-center text-sm font-semibold text-primary">
+              Prototype threshold: z ≥ 2.5
+            </div>
+          </Panel>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              ["Sigma Floor", "σ ≥ max(15% of μ, 3 W)", Gauge],
+              ["Minimum Excess", "At least 50 W above baseline", Zap],
+              ["Minimum Duration", "2 readings = 30 minutes", Clock3],
+            ].map(([t, d, I]) => {
+              const Icon = I as typeof Gauge;
+              return (
+                <div className="guard-card" key={String(t)}>
+                  <Icon />
+                  <b>{String(t)}</b>
+                  <small>{String(d)}</small>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <Panel title="Test Energy Reading" subtitle="Run the prototype rules against a sample room">
+          <div className="form-grid">
+            <label>
+              Room
+              <Select
+                value={roomId}
+                onChange={(e) => {
+                  setRoomId(e.target.value);
+                  const r = rooms.find((x) => x.id === e.target.value);
+                  if (r) setPower(r.current);
+                }}
+              >
+                {rooms.map((r) => (
+                  <option value={r.id} key={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label>
+              Current power (W)
+              <Input
+                type="number"
+                min="0"
+                value={power}
+                onChange={(e) => setPower(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              Duration (hours)
+              <Input
+                type="number"
+                min="0"
+                step=".25"
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+              />
+            </label>
+          </div>
+          <Button className="mt-4 w-full" onClick={analyze}>
+            <Sparkles />
+            Analyze reading
+          </Button>
+          {result && (
+            <div className={`result-box ${leak ? "result-leak" : "result-normal"}`}>
+              <div className="flex items-center gap-2 text-sm font-bold">
+                {leak ? <AlertTriangle /> : <CheckCircle2 />}
+                {leak ? "ENERGY LEAK DETECTED" : "NO LEAK DETECTED"}
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
+                {[
+                  ["Baseline", `${room.baseline} W`],
+                  ["Excess", `${excess} W`],
+                  ["Z-score", z.toFixed(2)],
+                  ["Severity", z > 10 ? "Critical" : z >= 2.5 ? "High" : "Normal"],
+                  ["Wasted", `${waste.toFixed(2)} kWh`],
+                  ["Est. cost", `₹${cost.toFixed(0)}`],
+                ].map(([a, b]) => (
+                  <span key={a}>
+                    <small>{a}</small>
+                    <b>{b}</b>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </Panel>
+      </div>
+      <BaselineAndCollection />
+      <Validation />
+      <LimitationsRoadmap />
+    </div>
+  );
+}
+function BaselineAndCollection() {
+  return (
+    <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <Panel title="How the baseline works" subtitle="No fixed threshold is applied to every room">
+        <div className="equation-flow">
+          {["Room", "Hour", "Weekday / Weekend", "Recent matching history"].map((x, i) => (
+            <div className="contents" key={x}>
+              <span>{x}</span>
+              {i < 3 && <b>+</b>}
+            </div>
+          ))}
+          <b>=</b>
+          <strong>Expected baseline</strong>
+        </div>
+        <p className="mt-5 text-sm text-muted-foreground">
+          The prototype calculates the mean μ and spread σ for each room/hour/day-type bucket using
+          a trailing 7 matching days.
+        </p>
+      </Panel>
+      <Panel title="Data collection" subtitle="A consistent 15-minute monitoring loop">
+        <div className="timeline">
+          {[
+            "Every 15 minutes",
+            "Collect energy reading",
+            "Store reading",
+            "Compare with room baseline",
+            "Calculate anomaly score",
+            "Apply guards",
+            "Generate alert",
+            "Estimate cost",
+          ].map((x, i) => (
+            <div key={x}>
+              <span>{i + 1}</span>
+              <p>{x}</p>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+function Validation() {
+  return (
+    <div className="mt-5">
+      <Panel
+        title="Prototype Validation"
+        subtitle="Prototype validation results on the supplied test dataset"
+      >
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <div className="validation-metrics">
+            {[
+              ["Leaks detected", "4 / 4"],
+              ["False positives", "0"],
+              ["Precision", "1.000"],
+              ["Recall", "1.000"],
+              ["F1 Score", "1.000"],
+            ].map(([a, b]) => (
+              <span key={a}>
+                <small>{a}</small>
+                <b>{b}</b>
+              </span>
+            ))}
+          </div>
+          <div className="confusion">
+            <div>
+              <small>Actual Leak</small>
+              <b>Detected Leak</b>
+              <strong>4</strong>
+            </div>
+            <div>
+              <small>Actual Normal</small>
+              <b>No False Positive</b>
+              <strong>0</strong>
+            </div>
+          </div>
+        </div>
+        <p className="mt-4 flex gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
+          <Info className="size-4 shrink-0" />
+          Prototype results depend on the dataset and operating assumptions. Real-world deployment
+          requires validation with live campus data.
+        </p>
+      </Panel>
+      <Panel
+        className="mt-5"
+        title="Smallest Detectable Leak"
+        subtitle="Comparison of baseline, detectable draw, and excess in watts"
+      >
+        <SimpleBar
+          data={detectionFloor}
+          dataKey="detectable"
+          name="Smallest detectable draw"
+          height={300}
+        />
+      </Panel>
+    </div>
+  );
+}
+function LimitationsRoadmap() {
+  const limitations = [
+    "Cold start requires historical data.",
+    "Weekend buckets have fewer samples.",
+    "Brand-new buildings may have limited baseline history.",
+    "A permanent leak can eventually become part of the baseline.",
+    "Schedule changes can cause alerts.",
+    "Detection is currently room-level, not device-level.",
+    "Prototype uses synthetic/test data.",
+    "Missing or irregular readings are not fully modeled.",
+  ];
+  const phases = [
+    "Prototype dashboard",
+    "Live IoT / smart meter integration",
+    "Cloud backend",
+    "Mobile notifications",
+    "Advanced anomaly detection",
+    "Campus-wide deployment",
+  ];
+  return (
+    <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <Panel title="Current Limitations" subtitle="Known boundaries of this prototype">
+        <ul className="limitations">
+          {limitations.map((x) => (
+            <li key={x}>
+              <AlertTriangle />
+              {x}
+            </li>
+          ))}
+        </ul>
+      </Panel>
+      <Panel title="Future Roadmap" subtitle="Future plans — not current features">
+        <div className="roadmap">
+          {phases.map((x, i) => (
+            <div key={x}>
+              <span>{i + 1}</span>
+              <p>
+                <small>PHASE {i + 1}</small>
+                <b>{x}</b>
+              </p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Potential improvements: academic calendar awareness, repeated alert escalation, seasonal
+          models, Isolation Forest, missing-data handling, and device-level monitoring.
+        </p>
+      </Panel>
+    </div>
+  );
+}
+export function Rooms() {
+  const { rooms } = useEnergy();
+  const [query, setQuery] = useState(""),
+    [filter, setFilter] = useState("All");
+  const visible = rooms.filter(
+    (r) =>
+      r.name.toLowerCase().includes(query.toLowerCase()) &&
+      (filter === "All" ||
+        (filter === "Leak" ? r.status === "Leak Detected" : r.status === filter)),
+  );
+  return (
+    <div className="page">
+      <PageHeader title="Rooms" description="Search and inspect room-level energy performance" />
+      <div className="filter-bar">
+        <div className="relative min-w-64 flex-1">
+          <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search rooms..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <div className="segmented">
+          {["All", "Normal", "Warning", "Leak"].map((x) => (
+            <button key={x} className={filter === x ? "active" : ""} onClick={() => setFilter(x)}>
+              {x}
+            </button>
+          ))}
+        </div>
+      </div>
+      {visible.length ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {visible.map((r) => (
+            <Link key={r.id} to="/rooms/$roomId" params={{ roomId: r.id }} className="room-card">
+              <div className="flex justify-between">
+                <span className="icon-tile">
+                  <Building2 />
+                </span>
+                <StatusBadge status={r.status} />
+              </div>
+              <h2>{r.name}</h2>
+              <p>{r.building}</p>
+              <div className="meter">
+                <span style={{ width: `${Math.min(100, r.current / 20)}%` }} />
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <span>
+                  <small>Current power</small>
+                  <b>{r.current} W</b>
+                </span>
+                <span>
+                  <small>Baseline</small>
+                  <b>{r.baseline} W</b>
+                </span>
+                <span>
+                  <small>Daily estimate</small>
+                  <b>{r.daily} kWh</b>
+                </span>
+                <span>
+                  <small>Updated</small>
+                  <b>{r.lastUpdated}</b>
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <EmptyState text="No rooms match your search and status filter." />
+      )}
+    </div>
+  );
+}
+export function RoomDetail({ roomId }: { roomId: string }) {
+  const { rooms, alerts, resolve } = useEnergy();
+  const room = rooms.find((r) => r.id === roomId);
+  if (!room) return <EmptyState text="This room could not be found." />;
+  const alert = alerts.find((a) => a.roomId === room.id && a.status === "Active");
+  const data = hourly.map((h, i) => ({
+    ...h,
+    actual: Math.max(
+      room.baseline * 0.8,
+      room.baseline +
+        Math.sin(i) * room.sigma +
+        (i > 13 && i < 19 && alert ? room.current - room.baseline : 0),
+    ),
+    baseline: room.baseline,
+  }));
+  const doResolve = () => {
+    if (alert) {
+      resolve(alert.id);
+      toast.success("Alert resolved", {
+        description: `${room.name} returned to monitored status.`,
+      });
+    }
+  };
+  return (
+    <div className="page">
+      <div className="mb-4">
+        <Link to="/rooms" className="text-xs font-semibold text-primary">
+          ← Back to rooms
+        </Link>
+      </div>
+      <PageHeader
+        title={room.name}
+        description={`${room.building} · Last updated ${room.lastUpdated}`}
+        action={<StatusBadge status={room.status} />}
+      />
+      <div className="kpi-grid">
+        {[
+          ["Current consumption", `${room.current} W`, Activity],
+          ["Normal baseline", `${room.baseline} W`, Gauge],
+          ["Z-score", room.zScore.toFixed(2), BarChart3],
+          ["Excess power", `${Math.max(0, room.current - room.baseline)} W`, Zap],
+          ["Estimated waste", `${room.waste.toFixed(2)} kWh`, BatteryCharging],
+          ["Estimated cost", `₹${Math.round(room.cost)}`, IndianRupee],
+          ["Duration", `${room.duration} hours`, Clock3],
+        ].map(([a, b, I]) => {
+          const Icon = I as typeof Gauge;
+          return (
+            <MetricCard
+              key={String(a)}
+              icon={<Icon />}
+              label={String(a)}
+              value={String(b)}
+              detail="Based on current prototype reading"
+            />
+          );
+        })}
+      </div>
+      <Panel
+        className="mt-5"
+        title="Actual vs Expected Consumption"
+        subtitle="Anomaly region highlighted against the room-specific baseline"
+      >
+        <ConsumptionChart data={data} />
+      </Panel>
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto]">
+        <Panel title="Why was this flagged?">
+          <p className="text-sm leading-6 text-muted-foreground">
+            Current consumption is significantly above this room's learned baseline and has remained
+            elevated for multiple consecutive readings.
+          </p>
+        </Panel>
+        {alert && (
+          <div className="panel flex min-w-64 flex-col justify-center">
+            <b className="text-sm">Ready for review?</b>
+            <p className="mb-4 mt-1 text-xs text-muted-foreground">
+              Resolve after the cause has been addressed.
+            </p>
+            <Button onClick={doResolve}>
+              <Check />
+              Mark as Resolved
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+export function Analytics() {
+  const waste = useEnergy().rooms.map((r) => ({ name: r.name, waste: r.waste }));
+  return (
+    <div className="page">
+      <PageHeader
+        title="Analytics"
+        description="Advanced patterns and prototype insights from consistent sample data"
+      />
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Panel title="Energy consumption by building">
+          <SimpleBar data={buildingData} />
+        </Panel>
+        <Panel title="Energy waste by room">
+          <SimpleBar data={waste} dataKey="waste" name="Waste (kWh)" />
+        </Panel>
+        <Panel title="Daily consumption trend">
+          <TrendChart data={daily} />
+        </Panel>
+        <Panel title="Weekly consumption trend">
+          <TrendChart
+            data={daily.map((d, i) => ({
+              ...d,
+              actual: d.actual * (i + 1),
+              baseline: d.baseline * (i + 1),
+            }))}
+          />
+        </Panel>
+        <Panel title="Estimated monthly waste">
+          <TrendChart data={monthly} xKey="month" keys={["waste"]} />
+        </Panel>
+        <Panel title="Normal vs abnormal consumption">
+          <SimpleBar
+            data={[
+              { name: "Normal", consumption: 86 },
+              { name: "Abnormal", consumption: 18 },
+            ]}
+          />
+        </Panel>
+      </div>
+      <Panel
+        className="mt-5"
+        title="Campus Energy Insights"
+        subtitle="Informational observations from this supplied prototype dataset"
+      >
+        <div className="insight-grid">
+          {[
+            "CS Lab 1 currently shows unusually high consumption.",
+            "Mechanical Lab 1 has the highest detected excess load.",
+            "Hostel Block A contributes significant after-hours consumption.",
+            "Several rooms remain within their normal baseline.",
+          ].map((x, i) => (
+            <div key={x}>
+              <Lightbulb />
+              <span>
+                <small>PROTOTYPE INSIGHT {i + 1}</small>
+                {x}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+export function Alerts() {
+  const { alerts, rooms, resolve, dismiss } = useEnergy();
+  const [tab, setTab] = useState("Active"),
+    [confirm, setConfirm] = useState<{ alert: Alert; action: "resolve" | "dismiss" } | null>(null);
+  const visible = alerts.filter((a) => tab === "All" || a.status === tab);
+  const act = () => {
+    if (!confirm) return;
+    if (confirm.action === "resolve") {
+      resolve(confirm.alert.id);
+      toast.success("Alert resolved");
+    } else {
+      dismiss(confirm.alert.id);
+      toast.success("Alert dismissed");
+    }
+    setConfirm(null);
+  };
+  return (
+    <div className="page">
+      <PageHeader
+        title="Alerts"
+        description="Review, resolve, and dismiss detected energy anomalies"
+      />
+      <div className="filter-bar">
+        <div className="segmented">
+          {["Active", "Resolved", "All"].map((x) => (
+            <button key={x} className={tab === x ? "active" : ""} onClick={() => setTab(x)}>
+              {x}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {visible.length} alert{visible.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+      <Panel>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Room</th>
+                <th>Detected At</th>
+                <th>Current</th>
+                <th>Baseline</th>
+                <th>Excess</th>
+                <th>Duration</th>
+                <th>Cost</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((a) => {
+                const r = rooms.find((x) => x.id === a.roomId);
+                if (!r) return null;
+                return (
+                  <tr key={a.id}>
+                    <td>
+                      <StatusBadge status={a.severity} />
+                    </td>
+                    <td>
+                      <b>{r.name}</b>
+                      <small>{a.id}</small>
+                    </td>
+                    <td>{a.detectedAt}</td>
+                    <td>{r.current} W</td>
+                    <td>{r.baseline} W</td>
+                    <td>{r.current - r.baseline} W</td>
+                    <td>{r.duration} h</td>
+                    <td>₹{Math.round(r.cost)}</td>
+                    <td>
+                      <StatusBadge status={a.status} />
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/rooms/$roomId" params={{ roomId: r.id }}>
+                            View
+                          </Link>
+                        </Button>
+                        {a.status === "Active" && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => setConfirm({ alert: a, action: "resolve" })}
+                            >
+                              Resolve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setConfirm({ alert: a, action: "dismiss" })}
+                            >
+                              Dismiss
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {!visible.length && <EmptyState text={`No ${tab.toLowerCase()} alerts.`} />}
+      </Panel>
+      <Dialog open={!!confirm} onOpenChange={() => setConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirm?.action === "resolve" ? "Resolve alert?" : "Dismiss alert?"}
+            </DialogTitle>
+            <DialogDescription>
+              This action updates the alert across the prototype dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant={confirm?.action === "dismiss" ? "destructive" : "default"}
+              onClick={act}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+export function CostSavings() {
+  return (
+    <div className="page">
+      <PageHeader
+        title="Energy Waste & Cost"
+        description={`Electricity tariff: ₹${TARIFF.toFixed(2)} / kWh`}
+      />
+      <div className="kpi-grid">
+        {[
+          ["Today's Waste", "17.93 kWh", Zap],
+          ["Weekly Waste", "83.4 kWh", CalendarDays],
+          ["Monthly Projected Waste", "537.9 kWh", LineIcon],
+          ["Today's Cost", "₹185", IndianRupee],
+          ["Monthly Projected Cost", "₹5,540", WalletCards],
+          ["Potential Savings", "₹5,540", TrendingDown],
+        ].map(([a, b, I]) => {
+          const Icon = I as typeof Zap;
+          return (
+            <MetricCard
+              key={String(a)}
+              label={String(a)}
+              value={String(b)}
+              icon={<Icon />}
+              detail="Calculated from supplied prototype data"
+            />
+          );
+        })}
+      </div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-3">
+        <Panel title="Waste by room">
+          <SimpleBar
+            data={[
+              { name: "CS Lab 1", waste: 4.8 },
+              { name: "Hostel A", waste: 4.16 },
+              { name: "Mech Lab 1", waste: 8.97 },
+            ]}
+            dataKey="waste"
+            name="Waste (kWh)"
+          />
+        </Panel>
+        <Panel title="Cost by building">
+          <SimpleBar data={buildingData} dataKey="cost" name="Cost (₹)" />
+        </Panel>
+        <Panel title="Monthly projected savings">
+          <TrendChart data={monthly} xKey="month" keys={["savings"]} />
+        </Panel>
+      </div>
+      <Panel
+        className="mt-5"
+        title="How cost is calculated"
+        subtitle="Transparent calculations for prototype review"
+      >
+        <div className="calculation">
+          <div>
+            <span>1</span>
+            <p>
+              <b>Find excess power</b>Current Power − Baseline
+            </p>
+          </div>
+          <ArrowRight />
+          <div>
+            <span>2</span>
+            <p>
+              <b>Calculate wasted energy</b>Excess × Duration / 1000
+            </p>
+          </div>
+          <ArrowRight />
+          <div>
+            <span>3</span>
+            <p>
+              <b>Estimate cost</b>Wasted kWh × ₹10.30
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 rounded-md bg-muted p-4 font-mono text-sm">
+          CS Lab 1: (1622 W − 21 W) × 3 h / 1000 = 4.80 kWh × ₹10.30 ≈ ₹49
+        </div>
+      </Panel>
+    </div>
+  );
+}
+export function SettingsPage() {
+  const defaults = {
+    z: 2.5,
+    excess: 50,
+    duration: 30,
+    sigma: 15,
+    tariff: 10.3,
+    email: false,
+    dashboard: true,
+    critical: true,
+  };
+  const [settings, setSettings] = useState(defaults);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("campus-settings");
+      if (saved) setSettings(JSON.parse(saved));
+    } catch {}
+  }, []);
+  const save = () => {
+    localStorage.setItem("campus-settings", JSON.stringify(settings));
+    toast.success("Settings saved", {
+      description: "Your prototype preferences are stored on this device.",
+    });
+  };
+  return (
+    <div className="page">
+      <PageHeader
+        title="Settings"
+        description="Configure local prototype detection and notification preferences"
+      />
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Panel title="Detection Settings" subtitle="Thresholds applied by the simulation">
+          <div className="settings-list">
+            {[
+              ["Z-score threshold", "z", 0.1],
+              ["Minimum excess (W)", "excess", 5],
+              ["Minimum duration (minutes)", "duration", 15],
+              ["Sigma floor (% baseline)", "sigma", 1],
+            ].map(([label, key, step]) => (
+              <label key={String(key)}>
+                {label}
+                <Input
+                  type="number"
+                  step={Number(step)}
+                  value={settings[key as keyof typeof settings] as number}
+                  onChange={(e) =>
+                    setSettings({ ...settings, [String(key)]: Number(e.target.value) })
+                  }
+                />
+              </label>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Sigma floor also enforces a minimum of 3 W.
+          </p>
+        </Panel>
+        <Panel title="Energy Settings">
+          <div className="settings-list">
+            <label>
+              Electricity tariff (₹/kWh)
+              <Input
+                type="number"
+                step=".1"
+                value={settings.tariff}
+                onChange={(e) => setSettings({ ...settings, tariff: Number(e.target.value) })}
+              />
+            </label>
+          </div>
+        </Panel>
+        <Panel
+          title="Notification Settings"
+          subtitle="Email delivery is visual only in this prototype"
+        >
+          <div className="space-y-2">
+            {[
+              ["Email alerts", "email"],
+              ["Dashboard alerts", "dashboard"],
+              ["Critical alert emphasis", "critical"],
+            ].map(([label, key]) => (
+              <label key={key} className="toggle-row">
+                <span>
+                  <b>{label}</b>
+                  <small>
+                    {key === "email"
+                      ? "No messages are actually sent"
+                      : "Show this notification type in the dashboard"}
+                  </small>
+                </span>
+                <Switch
+                  checked={settings[key as keyof typeof settings] as boolean}
+                  onCheckedChange={(v) => setSettings({ ...settings, [String(key)]: v })}
+                />
+              </label>
+            ))}
+          </div>
+        </Panel>
+      </div>
+      <Button className="mt-5" onClick={save}>
+        <Check />
+        Save Settings
+      </Button>
+    </div>
+  );
+}

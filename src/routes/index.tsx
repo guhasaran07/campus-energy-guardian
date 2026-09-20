@@ -1,2 +1,22 @@
-import {createFileRoute} from "@tanstack/react-router";import {Dashboard} from "@/components/energy/pages";
-export const Route=createFileRoute("/")({head:()=>({meta:[{title:"Campus Energy Leak Detector — Dashboard"},{name:"description",content:"Smart campus energy monitoring and intelligent room-level leak detection prototype."},{property:"og:title",content:"Campus Energy Leak Detector"},{property:"og:description",content:"Smart campus energy monitoring and room-level leak detection prototype."},{property:"og:type",content:"website"},{name:"twitter:card",content:"summary_large_image"}]}),component:Dashboard});
+import { createFileRoute } from "@tanstack/react-router";
+import { Dashboard } from "@/components/energy/pages";
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Campus Energy Leak Detector — Dashboard" },
+      {
+        name: "description",
+        content:
+          "Smart campus energy monitoring and intelligent room-level leak detection prototype.",
+      },
+      { property: "og:title", content: "Campus Energy Leak Detector" },
+      {
+        property: "og:description",
+        content: "Smart campus energy monitoring and room-level leak detection prototype.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Dashboard,
+});
