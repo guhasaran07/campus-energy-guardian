@@ -1,0 +1,18 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Alerts } from "@/components/energy/pages";
+export const Route = createFileRoute("/alerts")({
+  head: () => ({
+    meta: [
+      { title: "Energy Alerts — Campus Energy Detector" },
+      { name: "description", content: "Manage active and resolved campus energy leak alerts." },
+      { property: "og:title", content: "Energy Alerts — Campus Energy Detector" },
+      {
+        property: "og:description",
+        content: "Manage active and resolved campus energy leak alerts.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Alerts,
+});

@@ -1,0 +1,15 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Rooms } from "@/components/energy/pages";
+export const Route = createFileRoute("/rooms")({
+  head: () => ({
+    meta: [
+      { title: "Campus Rooms — Campus Energy Detector" },
+      { name: "description", content: "Search room-level energy status and consumption." },
+      { property: "og:title", content: "Campus Rooms — Campus Energy Detector" },
+      { property: "og:description", content: "Search room-level energy status and consumption." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Rooms,
+});
