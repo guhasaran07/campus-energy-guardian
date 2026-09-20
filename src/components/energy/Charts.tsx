@@ -118,7 +118,7 @@ export function TrendChart({
               key={k}
               type="monotone"
               dataKey={k}
-              name={k[0].toUpperCase() + k.slice(1)}
+              name={k.charAt(0).toUpperCase() + k.slice(1)}
               stroke={
                 [chartColors.actual, chartColors.baseline, chartColors.amber][i] ??
                 chartColors.actual
