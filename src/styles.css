@@ -253,6 +253,14 @@
   font-size: 0.9rem;
   line-height: 1.7;
 }
+.intro .border-input {
+  border-color: var(--sidebar-muted);
+  background: transparent;
+  color: var(--sidebar-foreground);
+}
+.intro .border-input:hover {
+  background: var(--sidebar-accent);
+}
 .eyebrow {
   display: inline-flex;
   align-items: center;

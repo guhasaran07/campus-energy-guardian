@@ -77,6 +77,7 @@ function Sidebar({ close }: { close?: () => void }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(false);
+  const [query, setQuery] = useState("");
   const [clock, setClock] = useState(new Date());
   const { alerts, rooms } = useEnergy();
   const active = alerts.filter((a) => a.status === "Active");
@@ -176,9 +177,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           <DialogHeader>
             <DialogTitle>Search campus</DialogTitle>
           </DialogHeader>
-          <Input autoFocus placeholder="Search rooms..." onChange={() => {}} />
+          <Input
+            autoFocus
+            placeholder="Search rooms..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
           <div className="max-h-72 space-y-1 overflow-auto">
-            {rooms.map((r) => (
+            {rooms
+              .filter((room) =>
+                `${room.name} ${room.building}`.toLowerCase().includes(query.toLowerCase()),
+              )
+              .map((r) => (
               <Link
                 key={r.id}
                 to="/rooms/$roomId"
@@ -192,7 +202,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </span>
                 <ChartNoAxesCombined className="size-4 text-muted-foreground" />
               </Link>
-            ))}
+              ))}
           </div>
         </DialogContent>
       </Dialog>
