@@ -127,12 +127,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <EnergyProvider>
-        <AppShell>
-          <Outlet />
-        </AppShell>
+      <AuthProvider>
+        <AuthGate>
+          <EnergyProvider>
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          </EnergyProvider>
+        </AuthGate>
         <Toaster richColors position="top-right" />
-      </EnergyProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
