@@ -561,10 +561,73 @@ export function LeakDetection() {
           )}
         </Panel>
       </div>
+      <RecentReadings refreshKey={savedCount} />
       <BaselineAndCollection />
       <Validation />
       <LimitationsRoadmap />
     </div>
+  );
+}
+type ReadingRow = {
+  id: string;
+  room_id: string;
+  value: number;
+  z_score: number;
+  waste: number;
+  cost: number;
+  verdict: string;
+  created_at: string;
+};
+function RecentReadings({ refreshKey }: { refreshKey: number }) {
+  const { rooms } = useEnergy();
+  const [readings, setReadings] = useState<ReadingRow[]>([]);
+  useEffect(() => {
+    supabase
+      .from("readings")
+      .select("id, room_id, value, z_score, waste, cost, verdict, created_at")
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setReadings((data ?? []) as ReadingRow[]));
+  }, [refreshKey]);
+  return (
+    <Panel
+      className="mt-5"
+      title="Saved readings"
+      subtitle="Every analysed reading is stored in the campus database"
+    >
+      {readings.length === 0 ? (
+        <EmptyState text="No readings have been analysed yet." />
+      ) : (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Reading</th>
+                <th>Z-score</th>
+                <th>Wasted</th>
+                <th>Cost</th>
+                <th>Result</th>
+                <th>Saved</th>
+              </tr>
+            </thead>
+            <tbody>
+              {readings.map((r) => (
+                <tr key={r.id}>
+                  <td>{rooms.find((x) => x.id === r.room_id)?.name ?? r.room_id}</td>
+                  <td>{Number(r.value)} W</td>
+                  <td>{Number(r.z_score).toFixed(2)}</td>
+                  <td>{Number(r.waste).toFixed(2)} kWh</td>
+                  <td>₹{Number(r.cost).toFixed(0)}</td>
+                  <td>{r.verdict}</td>
+                  <td>{new Date(r.created_at).toLocaleString("en-IN")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
   );
 }
 function BaselineAndCollection() {
