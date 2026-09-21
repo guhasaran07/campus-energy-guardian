@@ -81,6 +81,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState("");
   const [clock, setClock] = useState<Date | null>(null);
   const { alerts, rooms } = useEnergy();
+  const { displayName, signOut } = useAuth();
+  const initials = displayName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const handleSignOut = () => void signOut();
   const active = alerts.filter((a) => a.status === "Active");
   useEffect(() => {
     setClock(new Date());
