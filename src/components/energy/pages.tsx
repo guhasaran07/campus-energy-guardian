@@ -406,7 +406,8 @@ export function LeakDetection() {
   const [roomId, setRoomId] = useState("cs-lab-1"),
     [power, setPower] = useState(1622),
     [duration, setDuration] = useState(3),
-    [result, setResult] = useState(false);
+    [result, setResult] = useState(false),
+    [savedCount, setSavedCount] = useState(0);
   const room = rooms.find((r) => r.id === roomId) ?? rooms[0];
   if (!room) return <EmptyState text="No room data is available." />;
   const excess = Math.max(0, power - room.baseline),
