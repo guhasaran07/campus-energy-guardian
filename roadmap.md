@@ -1,2 +1,2 @@
-
-- [ ] Change the demo user name while adding persistent backend data.
+- [x] Change the demo user name (header now shows the signed-in account).
+- [x] Cloud backend: shared rooms, alerts, readings and settings tables with sign-in.

@@ -53,6 +53,7 @@ import {
   type Room,
 } from "@/data/energy";
 import { useEnergy } from "@/context/EnergyContext";
+import { supabase } from "@/integrations/supabase/client";
 const Select = ({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) => (
   <select className="control" {...props}>
     {children}
@@ -405,7 +406,8 @@ export function LeakDetection() {
   const [roomId, setRoomId] = useState("cs-lab-1"),
     [power, setPower] = useState(1622),
     [duration, setDuration] = useState(3),
-    [result, setResult] = useState(false);
+    [result, setResult] = useState(false),
+    [savedCount, setSavedCount] = useState(0);
   const room = rooms.find((r) => r.id === roomId) ?? rooms[0];
   if (!room) return <EmptyState text="No room data is available." />;
   const excess = Math.max(0, power - room.baseline),
@@ -414,9 +416,27 @@ export function LeakDetection() {
     waste = (excess * duration) / 1000,
     cost = waste * TARIFF,
     leak = z >= 2.5 && excess >= 50 && duration >= 0.5;
-  const analyze = () => {
+  const analyze = async () => {
     setResult(true);
-    toast.success("Reading analyzed", {
+    const severity = z >= 20 ? "Critical" : z >= 8 ? "High" : z >= 2.5 ? "Medium" : "Low";
+    const { data: auth } = await supabase.auth.getUser();
+    const { error } = await supabase.from("readings").insert({
+      room_id: room.id,
+      value: power,
+      z_score: Number(z.toFixed(2)),
+      excess,
+      waste: Number(waste.toFixed(3)),
+      cost: Number(cost.toFixed(2)),
+      verdict: leak ? "Leak Detected" : "Normal",
+      severity: leak ? severity : null,
+      created_by: auth.user?.id ?? null,
+    });
+    if (error) {
+      toast.error("Reading not saved", { description: error.message });
+      return;
+    }
+    setSavedCount((c) => c + 1);
+    toast.success("Reading analyzed and saved", {
       description: leak ? "Energy leak detected." : "Reading is within guarded limits.",
     });
   };
@@ -543,10 +563,73 @@ export function LeakDetection() {
           )}
         </Panel>
       </div>
+      <RecentReadings refreshKey={savedCount} />
       <BaselineAndCollection />
       <Validation />
       <LimitationsRoadmap />
     </div>
+  );
+}
+type ReadingRow = {
+  id: string;
+  room_id: string;
+  value: number;
+  z_score: number;
+  waste: number;
+  cost: number;
+  verdict: string;
+  created_at: string;
+};
+function RecentReadings({ refreshKey }: { refreshKey: number }) {
+  const { rooms } = useEnergy();
+  const [readings, setReadings] = useState<ReadingRow[]>([]);
+  useEffect(() => {
+    supabase
+      .from("readings")
+      .select("id, room_id, value, z_score, waste, cost, verdict, created_at")
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setReadings((data ?? []) as ReadingRow[]));
+  }, [refreshKey]);
+  return (
+    <Panel
+      className="mt-5"
+      title="Saved readings"
+      subtitle="Every analysed reading is stored in the campus database"
+    >
+      {readings.length === 0 ? (
+        <EmptyState text="No readings have been analysed yet." />
+      ) : (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Reading</th>
+                <th>Z-score</th>
+                <th>Wasted</th>
+                <th>Cost</th>
+                <th>Result</th>
+                <th>Saved</th>
+              </tr>
+            </thead>
+            <tbody>
+              {readings.map((r) => (
+                <tr key={r.id}>
+                  <td>{rooms.find((x) => x.id === r.room_id)?.name ?? r.room_id}</td>
+                  <td>{Number(r.value)} W</td>
+                  <td>{Number(r.z_score).toFixed(2)}</td>
+                  <td>{Number(r.waste).toFixed(2)} kWh</td>
+                  <td>₹{Number(r.cost).toFixed(0)}</td>
+                  <td>{r.verdict}</td>
+                  <td>{new Date(r.created_at).toLocaleString("en-IN")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
   );
 }
 function BaselineAndCollection() {
@@ -1147,16 +1230,32 @@ export function SettingsPage() {
     critical: true,
   };
   const [settings, setSettings] = useState(defaults);
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("campus-settings");
-      if (saved) setSettings(JSON.parse(saved));
-    } catch {}
+    supabase
+      .from("settings")
+      .select("data")
+      .eq("id", "campus")
+      .maybeSingle()
+      .then(({ data }) => {
+        const saved = data?.data as Partial<typeof defaults> | null;
+        if (saved && typeof saved === "object" && "z" in saved)
+          setSettings({ ...defaults, ...saved });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const save = () => {
-    localStorage.setItem("campus-settings", JSON.stringify(settings));
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("settings")
+      .upsert({ id: "campus", data: settings }, { onConflict: "id" });
+    setSaving(false);
+    if (error) {
+      toast.error("Could not save settings", { description: error.message });
+      return;
+    }
     toast.success("Settings saved", {
-      description: "Your prototype preferences are stored on this device.",
+      description: "Preferences are stored in the campus database for everyone.",
     });
   };
   return (
