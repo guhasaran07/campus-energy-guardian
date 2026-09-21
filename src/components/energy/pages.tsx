@@ -435,6 +435,7 @@ export function LeakDetection() {
       toast.error("Reading not saved", { description: error.message });
       return;
     }
+    setSavedCount((c) => c + 1);
     toast.success("Reading analyzed and saved", {
       description: leak ? "Energy leak detected." : "Reading is within guarded limits.",
     });
