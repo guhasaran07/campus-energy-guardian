@@ -10,6 +10,7 @@ import {
   IndianRupee,
   LayoutDashboard,
   Menu,
+  LogOut,
   Search,
   Settings,
   Siren,
