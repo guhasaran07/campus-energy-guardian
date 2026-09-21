@@ -53,6 +53,7 @@ import {
   type Room,
 } from "@/data/energy";
 import { useEnergy } from "@/context/EnergyContext";
+import { supabase } from "@/integrations/supabase/client";
 const Select = ({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) => (
   <select className="control" {...props}>
     {children}
