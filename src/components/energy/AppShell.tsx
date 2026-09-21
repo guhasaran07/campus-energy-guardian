@@ -126,14 +126,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <div className="ml-auto hidden text-right md:block">
             <div className="text-xs font-medium">
-              {clock.toLocaleDateString("en-IN", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-              })}
+              {clock
+                ? clock.toLocaleDateString("en-IN", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })
+                : ""}
             </div>
             <div className="text-[10px] text-muted-foreground">
-              {clock.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+              {clock
+                ? clock.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+                : ""}
             </div>
           </div>
           <Link
