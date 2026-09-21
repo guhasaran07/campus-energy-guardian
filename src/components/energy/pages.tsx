@@ -415,9 +415,26 @@ export function LeakDetection() {
     waste = (excess * duration) / 1000,
     cost = waste * TARIFF,
     leak = z >= 2.5 && excess >= 50 && duration >= 0.5;
-  const analyze = () => {
+  const analyze = async () => {
     setResult(true);
-    toast.success("Reading analyzed", {
+    const severity = z >= 20 ? "Critical" : z >= 8 ? "High" : z >= 2.5 ? "Medium" : "Low";
+    const { data: auth } = await supabase.auth.getUser();
+    const { error } = await supabase.from("readings").insert({
+      room_id: room.id,
+      value: power,
+      z_score: Number(z.toFixed(2)),
+      excess,
+      waste: Number(waste.toFixed(3)),
+      cost: Number(cost.toFixed(2)),
+      verdict: leak ? "Leak Detected" : "Normal",
+      severity: leak ? severity : null,
+      created_by: auth.user?.id ?? null,
+    });
+    if (error) {
+      toast.error("Reading not saved", { description: error.message });
+      return;
+    }
+    toast.success("Reading analyzed and saved", {
       description: leak ? "Energy leak detected." : "Reading is within guarded limits.",
     });
   };
