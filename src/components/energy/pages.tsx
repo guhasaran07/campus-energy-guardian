@@ -1147,16 +1147,32 @@ export function SettingsPage() {
     critical: true,
   };
   const [settings, setSettings] = useState(defaults);
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("campus-settings");
-      if (saved) setSettings(JSON.parse(saved));
-    } catch {}
+    supabase
+      .from("settings")
+      .select("data")
+      .eq("id", "campus")
+      .maybeSingle()
+      .then(({ data }) => {
+        const saved = data?.data as Partial<typeof defaults> | null;
+        if (saved && typeof saved === "object" && "z" in saved)
+          setSettings({ ...defaults, ...saved });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const save = () => {
-    localStorage.setItem("campus-settings", JSON.stringify(settings));
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("settings")
+      .upsert({ id: "campus", data: settings }, { onConflict: "id" });
+    setSaving(false);
+    if (error) {
+      toast.error("Could not save settings", { description: error.message });
+      return;
+    }
     toast.success("Settings saved", {
-      description: "Your prototype preferences are stored on this device.",
+      description: "Preferences are stored in the campus database for everyone.",
     });
   };
   return (
