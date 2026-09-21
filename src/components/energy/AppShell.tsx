@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEnergy } from "@/context/EnergyContext";
+import { useAuth } from "@/lib/auth";
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/monitoring", label: "Energy Monitoring", icon: Activity },
