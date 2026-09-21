@@ -153,10 +153,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="h-7 w-px bg-border" />
           <div className="flex items-center gap-2">
             <div className="grid size-8 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-              GU
+              PM
             </div>
             <div className="hidden text-xs sm:block">
-              <b>Guha Saran</b>
+              <b>Priya Menon</b>
               <span className="block text-[10px] text-muted-foreground">Campus Admin</span>
             </div>
           </div>
