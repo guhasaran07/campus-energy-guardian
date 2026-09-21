@@ -14,7 +14,190 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          created_at: string
+          detected_at: string
+          id: string
+          room_id: string
+          severity: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          detected_at: string
+          id: string
+          room_id: string
+          severity: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          detected_at?: string
+          id?: string
+          room_id?: string
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      readings: {
+        Row: {
+          cost: number
+          created_at: string
+          created_by: string | null
+          excess: number
+          id: string
+          room_id: string
+          severity: string | null
+          value: number
+          verdict: string
+          waste: number
+          z_score: number
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          excess?: number
+          id?: string
+          room_id: string
+          severity?: string | null
+          value: number
+          verdict?: string
+          waste?: number
+          z_score?: number
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          excess?: number
+          id?: string
+          room_id?: string
+          severity?: string | null
+          value?: number
+          verdict?: string
+          waste?: number
+          z_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "readings_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          baseline: number
+          building: string
+          cost: number
+          created_at: string
+          current_w: number
+          daily: number
+          duration: number
+          id: string
+          last_updated: string
+          name: string
+          sigma: number
+          status: string
+          updated_at: string
+          waste: number
+          z_score: number
+        }
+        Insert: {
+          baseline?: number
+          building: string
+          cost?: number
+          created_at?: string
+          current_w?: number
+          daily?: number
+          duration?: number
+          id: string
+          last_updated?: string
+          name: string
+          sigma?: number
+          status?: string
+          updated_at?: string
+          waste?: number
+          z_score?: number
+        }
+        Update: {
+          baseline?: number
+          building?: string
+          cost?: number
+          created_at?: string
+          current_w?: number
+          daily?: number
+          duration?: number
+          id?: string
+          last_updated?: string
+          name?: string
+          sigma?: number
+          status?: string
+          updated_at?: string
+          waste?: number
+          z_score?: number
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
