@@ -78,10 +78,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(false);
   const [query, setQuery] = useState("");
-  const [clock, setClock] = useState(new Date());
+  const [clock, setClock] = useState<Date | null>(null);
   const { alerts, rooms } = useEnergy();
   const active = alerts.filter((a) => a.status === "Active");
   useEffect(() => {
+    setClock(new Date());
     const id = setInterval(() => setClock(new Date()), 30000);
     return () => clearInterval(id);
   }, []);
@@ -125,14 +126,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <div className="ml-auto hidden text-right md:block">
             <div className="text-xs font-medium">
-              {clock.toLocaleDateString("en-IN", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-              })}
+              {clock
+                ? clock.toLocaleDateString("en-IN", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })
+                : ""}
             </div>
             <div className="text-[10px] text-muted-foreground">
-              {clock.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+              {clock
+                ? clock.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+                : ""}
             </div>
           </div>
           <Link
