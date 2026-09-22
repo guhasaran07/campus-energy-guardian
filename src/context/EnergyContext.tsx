@@ -72,26 +72,30 @@ const toAlert = (row: AlertRow): Alert => ({
 const timeLabel = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:00`;
 
 function buildSeries(readings: EnergyReading[], baselineTotal: number): SeriesPoint[] {
-  const buckets = new Map<number, { sum: number; count: number }>();
+  // bucket by hour, then by room, so the campus total is the sum of room averages
+  const buckets = new Map<number, Map<string, { sum: number; count: number }>>();
   for (const r of readings) {
     const d = new Date(r.timestamp);
     const key = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()).getTime();
-    const b = buckets.get(key) ?? { sum: 0, count: 0 };
-    b.sum += r.power;
-    b.count += 1;
-    buckets.set(key, b);
+    const byRoom = buckets.get(key) ?? new Map<string, { sum: number; count: number }>();
+    const entry = byRoom.get(r.roomName) ?? { sum: 0, count: 0 };
+    entry.sum += r.power;
+    entry.count += 1;
+    byRoom.set(r.roomName, entry);
+    buckets.set(key, byRoom);
   }
   return [...buckets.entries()]
     .sort((a, b) => a[0] - b[0])
     .slice(-24)
-    .map(([key, b]) => {
-      const actual = Math.round(b.sum / Math.max(1, b.count / Math.max(1, b.count && 1)));
-      const value = Math.round(b.sum / Math.max(1, b.count)) * 0 + actual;
+    .map(([key, byRoom]) => {
+      const actual = Math.round(
+        [...byRoom.values()].reduce((sum, e) => sum + e.sum / e.count, 0),
+      );
       return {
         time: timeLabel(new Date(key)),
-        actual: value,
+        actual,
         baseline: Math.round(baselineTotal),
-        anomaly: value > baselineTotal * 1.25 ? value : null,
+        anomaly: actual > baselineTotal * 1.25 ? actual : null,
       };
     });
 }
