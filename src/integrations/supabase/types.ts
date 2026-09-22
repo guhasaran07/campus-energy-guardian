@@ -52,6 +52,30 @@ export type Database = {
           },
         ]
       }
+      energy_readings: {
+        Row: {
+          created_at: string
+          id: string
+          power_w: number
+          room_name: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          power_w: number
+          room_name: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          power_w?: number
+          room_name?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

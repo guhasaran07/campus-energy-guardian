@@ -124,10 +124,90 @@ function ActiveLeaks() {
     </Panel>
   );
 }
+function TestReading() {
+  const { rooms, addReading } = useEnergy();
+  const [roomName, setRoomName] = useState("");
+  const [power, setPower] = useState("");
+  const [busy, setBusy] = useState(false);
+  const selected = rooms.find((r) => r.name === roomName) ?? rooms[0];
+  const send = async () => {
+    const value = Number(power);
+    if (!selected || power.trim() === "" || !Number.isFinite(value) || value < 0) {
+      toast.error("Enter a valid power value in watts");
+      return;
+    }
+    setBusy(true);
+    try {
+      await addReading(selected.name, value);
+      toast.success("Reading added", {
+        description: `${selected.name} · ${value} W saved to the campus database.`,
+      });
+      setPower("");
+    } catch (e) {
+      toast.error("Could not save the reading", {
+        description: e instanceof Error ? e.message : "The database could not be reached.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Panel
+      className="mt-5"
+      title="Test Energy Reading"
+      subtitle="Send a reading to the campus database and run it through the detection engine"
+    >
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex min-w-48 flex-1 flex-col gap-1 text-xs text-muted-foreground">
+          Room
+          <Select
+            value={selected?.name ?? ""}
+            onChange={(e) => setRoomName(e.target.value)}
+            disabled={!rooms.length}
+          >
+            {rooms.map((r) => (
+              <option key={r.id} value={r.name}>
+                {r.name}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="flex min-w-40 flex-1 flex-col gap-1 text-xs text-muted-foreground">
+          Power (W)
+          <Input
+            type="number"
+            min={0}
+            value={power}
+            placeholder="e.g. 1450"
+            onChange={(e) => setPower(e.target.value)}
+          />
+        </label>
+        <Button onClick={() => void send()} disabled={busy || !rooms.length}>
+          <Zap />
+          {busy ? "Sending…" : "Send Reading"}
+        </Button>
+      </div>
+      {selected && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Baseline {selected.baseline} W · σ {selected.sigma} W · detection needs z ≥ 2.5, excess ≥
+          50 W and 30 minutes of abnormal readings.
+        </p>
+      )}
+    </Panel>
+  );
+}
 export function Dashboard() {
-  const { alerts, rooms } = useEnergy();
+  const { alerts, rooms, readings, loading, error, series } = useEnergy();
   const active = alerts.filter((a) => a.status === "Active");
   const [building, setBuilding] = useState<Room[] | null>(null);
+  const totalKw = rooms.reduce((s, r) => s + r.current, 0) / 1000;
+  const wasted = rooms.reduce((s, r) => s + r.waste, 0);
+  const costToday = rooms.reduce((s, r) => s + r.cost, 0);
+  const criticalCount = active.filter((a) => a.severity === "Critical").length;
+  const highCount = active.filter((a) => a.severity === "High").length;
+  const readingsToday = readings.filter(
+    (r) => new Date(r.timestamp).toDateString() === new Date().toDateString(),
+  ).length;
   return (
     <div className="page">
       <section className="intro">
@@ -169,49 +249,63 @@ export function Dashboard() {
           title="Campus Energy Overview"
           description="Real-time monitoring and intelligent energy leak detection"
         />
+        {error && (
+          <div className="mb-4 rounded-md border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
+            Could not reach the campus database. {error}
+          </div>
+        )}
+        {loading && !error && (
+          <div className="mb-4 rounded-md border border-border p-4 text-sm text-muted-foreground">
+            Loading live energy readings…
+          </div>
+        )}
         <div className="kpi-grid">
           <MetricCard
             icon={<Activity />}
             label="Total Campus Consumption"
-            value="12.8 kW"
-            detail="Across 8 monitored rooms"
-            trend="-4.2%"
+            value={`${totalKw.toFixed(2)} kW`}
+            detail={`Across ${rooms.length} monitored rooms`}
+            trend="live"
           />
           <MetricCard
             icon={<Siren />}
             label="Active Energy Leaks"
             value={String(active.length)}
-            detail="2 critical · 1 high priority"
-            trend="+1 today"
+            detail={`${criticalCount} critical · ${highCount} high priority`}
+            trend="live"
           />
           <MetricCard
             icon={<Zap />}
             label="Energy Wasted Today"
-            value="17.93 kWh"
+            value={`${wasted.toFixed(2)} kWh`}
             detail="From active leak events"
-            trend="+8.1%"
+            trend="live"
           />
           <MetricCard
             icon={<IndianRupee />}
             label="Estimated Cost Today"
-            value="₹185"
+            value={`₹${costToday.toFixed(2)}`}
             detail={`At ₹${TARIFF.toFixed(2)} per kWh`}
-            trend="+₹22"
+            trend="live"
           />
           <MetricCard
             icon={<TrendingDown />}
             label="Potential Monthly Savings"
-            value="₹5,540"
+            value={`₹${Math.round(costToday * 30).toLocaleString("en-IN")}`}
             detail="If detected leaks are resolved"
-            trend="-12.4%"
+            trend="estimate"
           />
         </div>
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.65fr_.75fr]">
           <Panel
             title="Campus Energy Consumption"
-            subtitle="Today's consumption in watts · 15-minute model"
+            subtitle="Hourly average from stored energy readings"
           >
-            <ConsumptionChart data={hourly} />
+            {series.length ? (
+              <ConsumptionChart data={series} />
+            ) : (
+              <EmptyState text={loading ? "Loading readings…" : "No readings recorded yet."} />
+            )}
           </Panel>
           <Panel title="Live System Pulse" subtitle="Current monitoring coverage">
             <div className="space-y-5">
@@ -219,10 +313,10 @@ export function Dashboard() {
                 <Zap />
               </div>
               {[
-                ["Rooms online", "8 / 8"],
-                ["Readings today", "768"],
+                ["Rooms online", `${rooms.length} / ${rooms.length}`],
+                ["Readings today", String(readingsToday)],
+                ["Stored readings", String(readings.length)],
                 ["Detection interval", "15 min"],
-                ["Baseline coverage", "98.7%"],
               ].map(([a, b]) => (
                 <div key={a} className="flex justify-between border-b border-border pb-3 text-sm">
                   <span className="text-muted-foreground">{a}</span>
