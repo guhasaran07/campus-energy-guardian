@@ -124,10 +124,90 @@ function ActiveLeaks() {
     </Panel>
   );
 }
+function TestReading() {
+  const { rooms, addReading } = useEnergy();
+  const [roomName, setRoomName] = useState("");
+  const [power, setPower] = useState("");
+  const [busy, setBusy] = useState(false);
+  const selected = rooms.find((r) => r.name === roomName) ?? rooms[0];
+  const send = async () => {
+    const value = Number(power);
+    if (!selected || power.trim() === "" || !Number.isFinite(value) || value < 0) {
+      toast.error("Enter a valid power value in watts");
+      return;
+    }
+    setBusy(true);
+    try {
+      await addReading(selected.name, value);
+      toast.success("Reading added", {
+        description: `${selected.name} · ${value} W saved to the campus database.`,
+      });
+      setPower("");
+    } catch (e) {
+      toast.error("Could not save the reading", {
+        description: e instanceof Error ? e.message : "The database could not be reached.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Panel
+      className="mt-5"
+      title="Test Energy Reading"
+      subtitle="Send a reading to the campus database and run it through the detection engine"
+    >
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex min-w-48 flex-1 flex-col gap-1 text-xs text-muted-foreground">
+          Room
+          <Select
+            value={selected?.name ?? ""}
+            onChange={(e) => setRoomName(e.target.value)}
+            disabled={!rooms.length}
+          >
+            {rooms.map((r) => (
+              <option key={r.id} value={r.name}>
+                {r.name}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="flex min-w-40 flex-1 flex-col gap-1 text-xs text-muted-foreground">
+          Power (W)
+          <Input
+            type="number"
+            min={0}
+            value={power}
+            placeholder="e.g. 1450"
+            onChange={(e) => setPower(e.target.value)}
+          />
+        </label>
+        <Button onClick={() => void send()} disabled={busy || !rooms.length}>
+          <Zap />
+          {busy ? "Sending…" : "Send Reading"}
+        </Button>
+      </div>
+      {selected && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Baseline {selected.baseline} W · σ {selected.sigma} W · detection needs z ≥ 2.5, excess ≥
+          50 W and 30 minutes of abnormal readings.
+        </p>
+      )}
+    </Panel>
+  );
+}
 export function Dashboard() {
-  const { alerts, rooms } = useEnergy();
+  const { alerts, rooms, readings, loading, error, series } = useEnergy();
   const active = alerts.filter((a) => a.status === "Active");
   const [building, setBuilding] = useState<Room[] | null>(null);
+  const totalKw = rooms.reduce((s, r) => s + r.current, 0) / 1000;
+  const wasted = rooms.reduce((s, r) => s + r.waste, 0);
+  const costToday = rooms.reduce((s, r) => s + r.cost, 0);
+  const criticalCount = active.filter((a) => a.severity === "Critical").length;
+  const highCount = active.filter((a) => a.severity === "High").length;
+  const readingsToday = readings.filter(
+    (r) => new Date(r.timestamp).toDateString() === new Date().toDateString(),
+  ).length;
   return (
     <div className="page">
       <section className="intro">
