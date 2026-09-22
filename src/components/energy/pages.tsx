@@ -249,49 +249,63 @@ export function Dashboard() {
           title="Campus Energy Overview"
           description="Real-time monitoring and intelligent energy leak detection"
         />
+        {error && (
+          <div className="mb-4 rounded-md border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
+            Could not reach the campus database. {error}
+          </div>
+        )}
+        {loading && !error && (
+          <div className="mb-4 rounded-md border border-border p-4 text-sm text-muted-foreground">
+            Loading live energy readings…
+          </div>
+        )}
         <div className="kpi-grid">
           <MetricCard
             icon={<Activity />}
             label="Total Campus Consumption"
-            value="12.8 kW"
-            detail="Across 8 monitored rooms"
-            trend="-4.2%"
+            value={`${totalKw.toFixed(2)} kW`}
+            detail={`Across ${rooms.length} monitored rooms`}
+            trend="live"
           />
           <MetricCard
             icon={<Siren />}
             label="Active Energy Leaks"
             value={String(active.length)}
-            detail="2 critical · 1 high priority"
-            trend="+1 today"
+            detail={`${criticalCount} critical · ${highCount} high priority`}
+            trend="live"
           />
           <MetricCard
             icon={<Zap />}
             label="Energy Wasted Today"
-            value="17.93 kWh"
+            value={`${wasted.toFixed(2)} kWh`}
             detail="From active leak events"
-            trend="+8.1%"
+            trend="live"
           />
           <MetricCard
             icon={<IndianRupee />}
             label="Estimated Cost Today"
-            value="₹185"
+            value={`₹${costToday.toFixed(2)}`}
             detail={`At ₹${TARIFF.toFixed(2)} per kWh`}
-            trend="+₹22"
+            trend="live"
           />
           <MetricCard
             icon={<TrendingDown />}
             label="Potential Monthly Savings"
-            value="₹5,540"
+            value={`₹${Math.round(costToday * 30).toLocaleString("en-IN")}`}
             detail="If detected leaks are resolved"
-            trend="-12.4%"
+            trend="estimate"
           />
         </div>
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.65fr_.75fr]">
           <Panel
             title="Campus Energy Consumption"
-            subtitle="Today's consumption in watts · 15-minute model"
+            subtitle="Hourly average from stored energy readings"
           >
-            <ConsumptionChart data={hourly} />
+            {series.length ? (
+              <ConsumptionChart data={series} />
+            ) : (
+              <EmptyState text={loading ? "Loading readings…" : "No readings recorded yet."} />
+            )}
           </Panel>
           <Panel title="Live System Pulse" subtitle="Current monitoring coverage">
             <div className="space-y-5">
@@ -299,10 +313,10 @@ export function Dashboard() {
                 <Zap />
               </div>
               {[
-                ["Rooms online", "8 / 8"],
-                ["Readings today", "768"],
+                ["Rooms online", `${rooms.length} / ${rooms.length}`],
+                ["Readings today", String(readingsToday)],
+                ["Stored readings", String(readings.length)],
                 ["Detection interval", "15 min"],
-                ["Baseline coverage", "98.7%"],
               ].map(([a, b]) => (
                 <div key={a} className="flex justify-between border-b border-border pb-3 text-sm">
                   <span className="text-muted-foreground">{a}</span>
