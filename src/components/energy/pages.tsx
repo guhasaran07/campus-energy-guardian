@@ -679,7 +679,7 @@ function RecentReadings({ refreshKey }: { refreshKey: number }) {
   const [readings, setReadings] = useState<ReadingRow[]>([]);
   useEffect(() => {
     supabase
-      .from("energy_readings")
+      .from("readings")
       .select("id, room_id, value, z_score, waste, cost, verdict, created_at")
       .order("created_at", { ascending: false })
       .limit(8)
