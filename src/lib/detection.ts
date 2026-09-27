@@ -23,9 +23,45 @@ export type DetectionResult = {
   status: Status;
 };
 
+export type DetectionSettings = {
+  z: number;
+  excess: number;
+  duration: number;
+  sigmaPct: number;
+  tariff: number;
+};
+
+export const DEFAULT_SETTINGS: DetectionSettings = {
+  z: Z_THRESHOLD,
+  excess: MIN_EXCESS_W,
+  duration: MIN_DURATION_MIN,
+  sigmaPct: 15,
+  tariff: TARIFF,
+};
+
+/** Reads saved settings (either key style) and falls back to defaults. */
+export function parseSettings(data: unknown): DetectionSettings {
+  const d = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
+  const num = (v: unknown, f: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : f;
+  };
+  return {
+    z: num(d.z ?? d.zThreshold, Z_THRESHOLD),
+    excess: num(d.excess ?? d.minExcess, MIN_EXCESS_W),
+    duration: num(d.duration ?? d.minDuration, MIN_DURATION_MIN),
+    sigmaPct: num(d.sigma, 15),
+    tariff: num(d.tariff, TARIFF),
+  };
+}
+
+/** Sigma floor: max(actual sigma, sigmaPct% of baseline, 3 W). */
+export const sigmaUsed = (baseline: number, sigma: number, pct = 15) =>
+  Math.max(sigma, (pct / 100) * baseline, 3);
+
 /** z = (x - mu) / sigma */
-export const zScore = (value: number, baseline: number, sigma: number) =>
-  (value - baseline) / Math.max(sigma, 1);
+export const zScore = (value: number, baseline: number, sigma: number, pct = 15) =>
+  (value - baseline) / sigmaUsed(baseline, sigma, pct);
 
 export const severityFor = (z: number): Severity =>
   z >= 10 ? "Critical" : z >= 5 ? "High" : z >= 3.5 ? "Medium" : "Low";
@@ -39,6 +75,7 @@ export function detect(
   readings: EnergyReading[],
   baseline: number,
   sigma: number,
+  settings: DetectionSettings = DEFAULT_SETTINGS,
 ): DetectionResult {
   const latest = readings[0];
   if (!latest) {
@@ -57,9 +94,10 @@ export function detect(
 
   const current = latest.power;
   const excess = current - baseline;
-  const z = zScore(current, baseline, sigma);
+  const z = zScore(current, baseline, sigma, settings.sigmaPct);
   const abnormal = (value: number) =>
-    zScore(value, baseline, sigma) >= Z_THRESHOLD && value - baseline >= MIN_EXCESS_W;
+    zScore(value, baseline, sigma, settings.sigmaPct) >= settings.z &&
+    value - baseline >= settings.excess;
 
   let oldestAbnormal = latest;
   if (abnormal(current)) {
@@ -77,7 +115,7 @@ export function detect(
       )
     : 0;
 
-  const isLeak = abnormal(current) && durationMinutes >= MIN_DURATION_MIN;
+  const isLeak = abnormal(current) && durationMinutes >= settings.duration;
   const waste = isLeak ? (Math.max(0, excess) * (durationMinutes / 60)) / 1000 : 0;
 
   return {
@@ -87,7 +125,7 @@ export function detect(
     durationMinutes,
     isLeak,
     waste,
-    cost: waste * TARIFF,
+    cost: waste * settings.tariff,
     severity: isLeak ? severityFor(z) : null,
     status: isLeak ? "Leak Detected" : abnormal(current) ? "Warning" : "Normal",
   };

@@ -384,7 +384,7 @@ export function Dashboard() {
   );
 }
 export function Monitoring() {
-  const { rooms, series, buildingData: liveBuildings } = useEnergy();
+  const { rooms, series, buildingData: liveBuildings, dailySeries } = useEnergy();
   const [range, setRange] = useState("Today"),
     [building, setBuilding] = useState("All buildings"),
     [room, setRoom] = useState("All rooms"),
@@ -432,10 +432,10 @@ export function Monitoring() {
           <ConsumptionChart data={series} height={280} />
         </Panel>
         <Panel title="Daily energy consumption" subtitle={`${dayType} sample profile`}>
-          <TrendChart data={daily} />
+          <TrendChart data={dailySeries} />
         </Panel>
         <Panel title="Baseline vs actual" subtitle="Learned baseline compared with observed load">
-          <TrendChart data={daily} />
+          <TrendChart data={dailySeries} />
         </Panel>
         <Panel title="Energy by building" subtitle="Consumption in kWh">
           <SimpleBar data={liveBuildings} />
@@ -1026,7 +1026,7 @@ export function RoomDetail({ roomId }: { roomId: string }) {
   );
 }
 export function Analytics() {
-  const { rooms: liveRooms, buildingData: liveBuildings } = useEnergy();
+  const { rooms: liveRooms, buildingData: liveBuildings, dailySeries } = useEnergy();
   const waste = liveRooms.map((r) => ({ name: r.name, waste: r.waste }));
   return (
     <div className="page">
@@ -1042,7 +1042,7 @@ export function Analytics() {
           <SimpleBar data={waste} dataKey="waste" name="Waste (kWh)" />
         </Panel>
         <Panel title="Daily consumption trend">
-          <TrendChart data={daily} />
+          <TrendChart data={dailySeries} />
         </Panel>
         <Panel title="Weekly consumption trend">
           <TrendChart

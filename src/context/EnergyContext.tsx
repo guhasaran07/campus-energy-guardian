@@ -2,7 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { TARIFF, type Alert, type Room, type Severity, type Status } from "@/data/energy";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { detect, relativeTime, type EnergyReading } from "@/lib/detection";
+import {
+  detect,
+  parseSettings,
+  relativeTime,
+  DEFAULT_SETTINGS,
+  type DetectionSettings,
+  type EnergyReading,
+} from "@/lib/detection";
 
 export type SeriesPoint = {
   time: string;
@@ -24,6 +31,8 @@ type Ctx = {
   series: SeriesPoint[];
   roomSeries: (roomName: string) => SeriesPoint[];
   buildingData: { name: string; consumption: number; waste: number; cost: number }[];
+  dailySeries: { day: string; actual: number; baseline: number }[];
+  settings: DetectionSettings;
 };
 
 const EnergyContext = createContext<Ctx | undefined>(undefined);
@@ -107,9 +116,10 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
   const [readings, setReadings] = useState<EnergyReading[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<DetectionSettings>(DEFAULT_SETTINGS);
 
   const refresh = useCallback(async () => {
-    const [roomRes, alertRes, readingRes] = await Promise.all([
+    const [roomRes, alertRes, readingRes, settingsRes] = await Promise.all([
       supabase.from("rooms").select("*").order("name"),
       supabase.from("alerts").select("*").order("detected_at", { ascending: false }),
       supabase
@@ -117,6 +127,7 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
         .select("*")
         .order("timestamp", { ascending: false })
         .limit(1000),
+      supabase.from("settings").select("data").eq("id", "campus").maybeSingle(),
     ]);
     const failure = roomRes.error ?? alertRes.error ?? readingRes.error;
     if (failure) {
@@ -125,6 +136,7 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
       return;
     }
     setError(null);
+    setSettings(parseSettings(settingsRes.data?.data));
     setRoomRows((roomRes.data ?? []) as RoomRow[]);
     setAlerts(((alertRes.data ?? []) as AlertRow[]).map(toAlert));
     setReadings(((readingRes.data ?? []) as ReadingRow[]).map(toReading));
@@ -165,7 +177,7 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
         const baseline = Number(row.baseline);
         const sigma = Number(row.sigma);
         const list = readingsByRoom.get(row.name) ?? [];
-        const result = detect(list, baseline, sigma);
+        const result = detect(list, baseline, sigma, settings);
         const latest = list[0];
         const activeAlert = alerts.find((a) => a.roomId === row.id && a.status === "Active");
         const handled = alerts.some((a) => a.roomId === row.id && a.status !== "Active");
@@ -197,7 +209,7 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
           zScore: Number(result.zScore.toFixed(2)),
         };
       }),
-    [roomRows, readingsByRoom, alerts],
+    [roomRows, readingsByRoom, alerts, settings],
   );
 
   const baselineTotal = useMemo(
@@ -227,6 +239,31 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
     return [...map.values()];
   }, [rooms]);
 
+  const dailySeries = useMemo(() => {
+    const days = new Map<string, Map<string, { sum: number; count: number }>>();
+    for (const r of readings) {
+      const d = new Date(r.timestamp);
+      const key = d.toISOString().slice(0, 10);
+      const byRoom = days.get(key) ?? new Map<string, { sum: number; count: number }>();
+      const e = byRoom.get(r.roomName) ?? { sum: 0, count: 0 };
+      e.sum += r.power;
+      e.count += 1;
+      byRoom.set(r.roomName, e);
+      days.set(key, byRoom);
+    }
+    return [...days.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-7)
+      .map(([key, byRoom]) => ({
+        day: new Date(key).toLocaleDateString("en-IN", { weekday: "short", day: "numeric" }),
+        // average watts x 24 h -> kWh/day
+        actual: Number(
+          (([...byRoom.values()].reduce((s, e) => s + e.sum / e.count, 0) * 24) / 1000).toFixed(1),
+        ),
+        baseline: Number(((baselineTotal * 24) / 1000).toFixed(1)),
+      }));
+  }, [readings, baselineTotal]);
+
   const addReading = useCallback(
     async (roomName: string, power: number) => {
       const { data, error: insertError } = await supabase
@@ -243,9 +280,9 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
         return;
       }
       const history = [inserted, ...(readingsByRoom.get(roomName) ?? [])];
-      const result = detect(history, Number(row.baseline), Number(row.sigma));
+      const result = detect(history, Number(row.baseline), Number(row.sigma), settings);
 
-      await supabase
+      const { error: roomError } = await supabase
         .from("rooms")
         .update({
           current_w: result.current,
@@ -257,10 +294,11 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
           last_updated: "Just now",
         })
         .eq("id", row.id);
+      if (roomError) throw new Error(`Reading saved, but room update failed: ${roomError.message}`);
 
       const alreadyActive = alerts.some((a) => a.roomId === row.id && a.status === "Active");
       if (result.isLeak && !alreadyActive) {
-        await supabase.from("alerts").insert({
+        const { error: alertError } = await supabase.from("alerts").insert({
           id: `ALT-${Date.now().toString().slice(-6)}`,
           room_id: row.id,
           severity: result.severity ?? "Medium",
@@ -272,10 +310,12 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
           }),
           status: "Active",
         });
+        if (alertError)
+          throw new Error(`Reading saved, but alert creation failed: ${alertError.message}`);
       }
       await refresh();
     },
-    [roomRows, readingsByRoom, alerts, refresh],
+    [roomRows, readingsByRoom, alerts, refresh, settings],
   );
 
   const update = useCallback(
@@ -307,6 +347,8 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
       series,
       roomSeries,
       buildingData,
+      dailySeries,
+      settings,
     }),
     [
       rooms,
@@ -320,6 +362,8 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
       series,
       roomSeries,
       buildingData,
+      dailySeries,
+      settings,
     ],
   );
 
