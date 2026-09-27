@@ -384,7 +384,7 @@ export function Dashboard() {
   );
 }
 export function Monitoring() {
-  const { rooms } = useEnergy();
+  const { rooms, series, buildingData: liveBuildings } = useEnergy();
   const [range, setRange] = useState("Today"),
     [building, setBuilding] = useState("All buildings"),
     [room, setRoom] = useState("All rooms"),
@@ -429,7 +429,7 @@ export function Monitoring() {
       </div>
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel title="Hourly energy consumption" subtitle={`${range} · ${building}`}>
-          <ConsumptionChart data={hourly} height={280} />
+          <ConsumptionChart data={series} height={280} />
         </Panel>
         <Panel title="Daily energy consumption" subtitle={`${dayType} sample profile`}>
           <TrendChart data={daily} />
@@ -438,7 +438,7 @@ export function Monitoring() {
           <TrendChart data={daily} />
         </Panel>
         <Panel title="Energy by building" subtitle="Consumption in kWh">
-          <SimpleBar data={buildingData} />
+          <SimpleBar data={liveBuildings} />
         </Panel>
       </div>
       <Panel
@@ -514,7 +514,7 @@ export function LeakDetection() {
     setResult(true);
     const severity = z >= 20 ? "Critical" : z >= 8 ? "High" : z >= 2.5 ? "Medium" : "Low";
     const { data: auth } = await supabase.auth.getUser();
-    const { error } = await supabase.from("readings").insert({
+    const { error } = await supabase.from("energy_readings").insert({
       room_id: room.id,
       value: power,
       z_score: Number(z.toFixed(2)),
@@ -679,7 +679,7 @@ function RecentReadings({ refreshKey }: { refreshKey: number }) {
   const [readings, setReadings] = useState<ReadingRow[]>([]);
   useEffect(() => {
     supabase
-      .from("readings")
+      .from("energy_readings")
       .select("id, room_id, value, z_score, waste, cost, verdict, created_at")
       .order("created_at", { ascending: false })
       .limit(8)
@@ -948,20 +948,11 @@ export function Rooms() {
   );
 }
 export function RoomDetail({ roomId }: { roomId: string }) {
-  const { rooms, alerts, resolve } = useEnergy();
+  const { rooms, alerts, resolve, roomSeries } = useEnergy();
   const room = rooms.find((r) => r.id === roomId);
   if (!room) return <EmptyState text="This room could not be found." />;
   const alert = alerts.find((a) => a.roomId === room.id && a.status === "Active");
-  const data = hourly.map((h, i) => ({
-    ...h,
-    actual: Math.max(
-      room.baseline * 0.8,
-      room.baseline +
-        Math.sin(i) * room.sigma +
-        (i > 13 && i < 19 && alert ? room.current - room.baseline : 0),
-    ),
-    baseline: room.baseline,
-  }));
+  const data = roomSeries(room.name);
   const doResolve = () => {
     if (alert) {
       resolve(alert.id);
@@ -1035,7 +1026,8 @@ export function RoomDetail({ roomId }: { roomId: string }) {
   );
 }
 export function Analytics() {
-  const waste = useEnergy().rooms.map((r) => ({ name: r.name, waste: r.waste }));
+  const { rooms: liveRooms, buildingData: liveBuildings } = useEnergy();
+  const waste = liveRooms.map((r) => ({ name: r.name, waste: r.waste }));
   return (
     <div className="page">
       <PageHeader
@@ -1044,7 +1036,7 @@ export function Analytics() {
       />
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel title="Energy consumption by building">
-          <SimpleBar data={buildingData} />
+          <SimpleBar data={liveBuildings} />
         </Panel>
         <Panel title="Energy waste by room">
           <SimpleBar data={waste} dataKey="waste" name="Waste (kWh)" />
