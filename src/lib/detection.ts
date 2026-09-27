@@ -47,11 +47,11 @@ export function parseSettings(data: unknown): DetectionSettings {
     return Number.isFinite(n) && n > 0 ? n : f;
   };
   return {
-    z: num(d.z ?? d.zThreshold, Z_THRESHOLD),
-    excess: num(d.excess ?? d.minExcess, MIN_EXCESS_W),
-    duration: num(d.duration ?? d.minDuration, MIN_DURATION_MIN),
-    sigmaPct: num(d.sigma, 15),
-    tariff: num(d.tariff, TARIFF),
+    z: num(d["z"] ?? d["zThreshold"], Z_THRESHOLD),
+    excess: num(d["excess"] ?? d["minExcess"], MIN_EXCESS_W),
+    duration: num(d["duration"] ?? d["minDuration"], MIN_DURATION_MIN),
+    sigmaPct: num(d["sigma"], 15),
+    tariff: num(d["tariff"], TARIFF),
   };
 }
 
