@@ -514,7 +514,7 @@ export function LeakDetection() {
     setResult(true);
     const severity = z >= 20 ? "Critical" : z >= 8 ? "High" : z >= 2.5 ? "Medium" : "Low";
     const { data: auth } = await supabase.auth.getUser();
-    const { error } = await supabase.from("energy_readings").insert({
+    const { error } = await supabase.from("readings").insert({
       room_id: room.id,
       value: power,
       z_score: Number(z.toFixed(2)),
