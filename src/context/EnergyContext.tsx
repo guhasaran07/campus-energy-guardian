@@ -309,7 +309,11 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
             minute: "2-digit",
           }),
           status: "Active",
-        });
+          power_w: result.current,
+          z_score: Number(result.zScore.toFixed(2)),
+          wasted_kwh: Number(result.waste.toFixed(3)),
+          cost: Number(result.cost.toFixed(2)),
+        } as never);
         if (alertError)
           throw new Error(`Reading saved, but alert creation failed: ${alertError.message}`);
       }
