@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode, type Context } from "react";
 import { TARIFF, type Alert, type Room, type Severity, type Status } from "@/data/energy";
 import { supabase } from "@/integrations/supabase/client";
 import {
