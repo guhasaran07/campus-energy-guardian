@@ -14,7 +14,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "../components/energy/AppShell";
 import { EnergyProvider } from "../context/EnergyContext";
 import { Toaster } from "../components/ui/sonner";
-import { AuthGate, AuthProvider } from "../lib/auth";
 
 function NotFoundComponent() {
   return (
@@ -127,16 +126,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AuthGate>
-          <EnergyProvider>
-            <AppShell>
-              <Outlet />
-            </AppShell>
-          </EnergyProvider>
-        </AuthGate>
-        <Toaster richColors position="top-right" />
-      </AuthProvider>
+      <EnergyProvider>
+        <AppShell>
+          <Outlet />
+        </AppShell>
+      </EnergyProvider>
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
 }
