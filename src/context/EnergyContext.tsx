@@ -34,7 +34,9 @@ type Ctx = {
   settings: DetectionSettings;
 };
 
-const EnergyContext = createContext<Ctx | undefined>(undefined);
+// Keep one context instance across hot reloads so provider and consumers always match.
+const g = globalThis as unknown as { __energyCtx?: React.Context<Ctx | undefined> };
+const EnergyContext = g.__energyCtx ?? (g.__energyCtx = createContext<Ctx | undefined>(undefined));
 
 type RoomRow = {
   id: string;
