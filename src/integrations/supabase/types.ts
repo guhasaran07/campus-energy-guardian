@@ -16,31 +16,43 @@ export type Database = {
     Tables: {
       alerts: {
         Row: {
+          cost: number | null
           created_at: string
           detected_at: string
           id: string
+          power_w: number | null
           room_id: string
           severity: string
           status: string
           updated_at: string
+          wasted_kwh: number | null
+          z_score: number | null
         }
         Insert: {
+          cost?: number | null
           created_at?: string
           detected_at: string
           id: string
+          power_w?: number | null
           room_id: string
           severity: string
           status?: string
           updated_at?: string
+          wasted_kwh?: number | null
+          z_score?: number | null
         }
         Update: {
+          cost?: number | null
           created_at?: string
           detected_at?: string
           id?: string
+          power_w?: number | null
           room_id?: string
           severity?: string
           status?: string
           updated_at?: string
+          wasted_kwh?: number | null
+          z_score?: number | null
         }
         Relationships: [
           {
