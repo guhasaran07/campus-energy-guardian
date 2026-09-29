@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { TARIFF, type Alert, type Room, type Severity, type Status } from "@/data/energy";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import {
   detect,
   parseSettings,
@@ -110,7 +109,6 @@ function buildSeries(readings: EnergyReading[], baselineTotal: number): SeriesPo
 }
 
 export function EnergyProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
   const [roomRows, setRoomRows] = useState<RoomRow[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [readings, setReadings] = useState<EnergyReading[]>([]);
@@ -144,7 +142,6 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!session) return;
     void refresh();
     const channel = supabase
       .channel("energy-readings-live")
@@ -157,7 +154,7 @@ export function EnergyProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [session, refresh]);
+  }, [refresh]);
 
   const readingsByRoom = useMemo(() => {
     const map = new Map<string, EnergyReading[]>();
