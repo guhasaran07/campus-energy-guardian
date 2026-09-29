@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode, type Context } from "react";
 import { TARIFF, type Alert, type Room, type Severity, type Status } from "@/data/energy";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -34,7 +34,9 @@ type Ctx = {
   settings: DetectionSettings;
 };
 
-const EnergyContext = createContext<Ctx | undefined>(undefined);
+// Keep one context instance across hot reloads so provider and consumers always match.
+const g = globalThis as unknown as { __energyCtx?: React.Context<Ctx | undefined> };
+const EnergyContext: Context<Ctx | undefined> = g.__energyCtx ?? (g.__energyCtx = createContext<Ctx | undefined>(undefined));
 
 type RoomRow = {
   id: string;
